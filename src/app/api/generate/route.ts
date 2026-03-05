@@ -57,13 +57,17 @@ export async function POST(request: NextRequest) {
 
   const systemPrompt = `You are a world-class content strategist who creates platform-native content.
 
-Writer persona: ${toneDesc}
-Brand: ${brand}
+BRAND VOICE (use this verbatim as the writer's identity — adopt their perspective, vocabulary, and style):
+"${brand}"
+
+TONE: ${tone}
+Apply this tone consistently: write as ${toneDesc}. This tone should shape word choice, sentence structure, and overall energy of every piece of content.
 
 Synthesize ${sources.length} source(s) into ONE unified core insight, then create content for each platform.
 
 CRITICAL RULES:
 - Synthesize ALL sources, not just one
+- The brand voice above MUST be reflected in every piece of content — use the writer's specific language, metaphors, and framing
 - Chinese (Rednote): NATIVE Simplified Chinese, culturally adapted — never translate
 - Japanese (Note.jp): NATIVE Japanese, culturally adapted — never translate
 - X/Twitter MUST use format: TWEET_1: text | TWEET_2: text | TWEET_3: text (etc)

@@ -1,6 +1,5 @@
 'use client'
 
-import { useState } from 'react'
 import type { Source } from '@/types'
 import { BADGE_STYLES } from '@/types'
 import { toast } from '@/components/Toast'
@@ -14,7 +13,7 @@ type Props = {
   onToneChange: (t: string) => void
   enabledPlatforms: Record<string, boolean>
   onEnabledPlatformsChange: (p: Record<string, boolean>) => void
-  onGenerate: (results: Record<string, string>, insight: string) => void
+  onRequestGenerate: () => void
 }
 
 const TONES = ['Thought leader', 'Casual founder', 'Storyteller', 'Professional']
@@ -37,16 +36,15 @@ export default function ConfigureTab({
   onToneChange,
   enabledPlatforms,
   onEnabledPlatformsChange,
-  onGenerate,
+  onRequestGenerate,
 }: Props) {
   const selectedSources = sources.filter(s => s.selected)
-  const [generating, setGenerating] = useState(false)
 
   function togglePlatform(key: string) {
     onEnabledPlatformsChange({ ...enabledPlatforms, [key]: !enabledPlatforms[key] })
   }
 
-  async function handleGenerate() {
+  function handleGenerate() {
     if (selectedSources.length === 0) {
       toast('No sources selected — go back and select some')
       return
@@ -58,32 +56,7 @@ export default function ConfigureTab({
       return
     }
 
-    setGenerating(true)
-    try {
-      const res = await fetch('/api/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sources: selectedSources.map(s => ({ label: s.label, content: s.content })),
-          platforms,
-          brandVoice,
-          tone,
-        }),
-      })
-
-      const data = await res.json()
-      if (data.error) {
-        toast('Generation failed: ' + data.error)
-        return
-      }
-
-      onGenerate(data.results, data.coreInsight || '')
-      toast('Content generated')
-    } catch {
-      toast('Generation failed — check connection')
-    } finally {
-      setGenerating(false)
-    }
+    onRequestGenerate()
   }
 
   return (
@@ -203,13 +176,9 @@ export default function ConfigureTab({
         <div className="pt-4 flex justify-end">
           <button
             onClick={handleGenerate}
-            disabled={generating}
-            className="px-5 py-2.5 rounded-[9px] bg-text text-bg font-semibold text-[13.5px] transition-all hover:bg-[#2a2926] hover:-translate-y-px hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            className="px-5 py-2.5 rounded-[9px] bg-text text-bg font-semibold text-[13.5px] transition-all hover:bg-[#2a2926] hover:-translate-y-px hover:shadow-md"
           >
-            {generating && (
-              <span className="w-3.5 h-3.5 border-2 border-bg border-t-transparent rounded-full animate-spin" />
-            )}
-            {generating ? 'Generating…' : 'Generate content →'}
+            Generate content →
           </button>
         </div>
       </div>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import type { Source } from '@/types'
 import { toast } from '@/components/Toast'
 import RednoteCarousel from '@/components/generate/RednoteCarousel'
@@ -23,19 +23,18 @@ type Props = {
   onGeneratedContentChange: (c: Record<string, string>) => void
   coreInsight: string
   onCoreInsightChange: (i: string) => void
+  pendingGenerate: boolean
+  onPendingGenerateConsumed: () => void
+  onGenerationComplete: (results: Record<string, string>, insight: string) => void
 }
 
 function parseXThread(content: string): string[] {
-  // Try TWEET_N: format first
   const parts = content.split(/TWEET_\d+:\s*/i).filter(t => t.trim())
   if (parts.length > 1) return parts.map(t => t.split('|')[0].trim()).filter(Boolean)
-  // Fallback: split by | or newlines
   const byPipe = content.split('|').map(t => t.trim()).filter(t => t.length > 10)
   if (byPipe.length > 1) return byPipe
-  // Fallback: split by numbered lines
   const byNum = content.split(/\n\d+[/.]\s*/).filter(t => t.trim())
   if (byNum.length > 1) return byNum
-  // Last resort: split into chunks of ~280
   const words = content.split(' ')
   const tweets: string[] = []
   let cur = ''
@@ -64,6 +63,9 @@ export default function GenerateTab({
   onGeneratedContentChange,
   coreInsight,
   onCoreInsightChange,
+  pendingGenerate,
+  onPendingGenerateConsumed,
+  onGenerationComplete,
 }: Props) {
   const [activePlat, setActivePlat] = useState<string | null>(null)
   const [generating, setGenerating] = useState(false)
@@ -76,6 +78,15 @@ export default function GenerateTab({
 
   const platforms = Object.keys(enabledPlatforms).filter(k => enabledPlatforms[k])
   const hasContent = Object.keys(generatedContent).length > 0
+
+  // Auto-trigger generation when pendingGenerate becomes true (from ConfigureTab)
+  useEffect(() => {
+    if (pendingGenerate) {
+      onPendingGenerateConsumed()
+      handleGenerate()
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingGenerate])
 
   const getEditedContent = useCallback((pk: string): string => {
     if (pk === 'x') {
@@ -126,8 +137,11 @@ export default function GenerateTab({
         return
       }
 
-      onGeneratedContentChange(data.results || {})
-      onCoreInsightChange(data.coreInsight || '')
+      const results = data.results || {}
+      const insight = data.coreInsight || ''
+      onGeneratedContentChange(results)
+      onCoreInsightChange(insight)
+      onGenerationComplete(results, insight)
       setActivePlat(platforms[0])
       toast('Content generated')
     } catch {
@@ -138,23 +152,26 @@ export default function GenerateTab({
     }
   }
 
+  // Fix 1: Refine only affects the currently active platform
   async function handleRefine() {
     if (!activePlat) { toast('Select a platform first'); return }
     const instr = refineText.trim()
     if (!instr) return
 
+    const targetPlat = activePlat
     setRefining(true)
-    const currentContent = getEditedContent(activePlat)
+    const currentContent = getEditedContent(targetPlat)
 
     try {
       const res = await fetch('/api/refine', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          platform: PLATS[activePlat]?.name || activePlat,
+          platformKey: targetPlat,
+          platform: PLATS[targetPlat]?.name || targetPlat,
           content: currentContent,
           instruction: instr,
-          isThread: activePlat === 'x',
+          isThread: targetPlat === 'x',
         }),
       })
 
@@ -164,9 +181,10 @@ export default function GenerateTab({
         return
       }
 
-      onGeneratedContentChange({ ...generatedContent, [activePlat]: data.content })
+      // Only update the targeted platform's content
+      onGeneratedContentChange({ ...generatedContent, [targetPlat]: data.content })
       setRefineText('')
-      toast('Refined')
+      toast(`Refined ${PLATS[targetPlat]?.name || targetPlat}`)
     } catch {
       toast('Refinement failed')
     } finally {
@@ -192,14 +210,11 @@ export default function GenerateTab({
           className={`plat-editor flex-1 flex flex-col overflow-hidden ${activePlat === pk ? '' : 'hidden'}`}
           key={pk}
         >
-          {/* Editor header */}
           <div className="flex items-center gap-2 px-5 py-3 border-b border-border flex-shrink-0">
             <span className="text-[15px]">{cfg.icon}</span>
             <span className="text-[13px] font-semibold text-text">{cfg.name}</span>
             <span className="text-[11px] text-text3">{cfg.lang}</span>
           </div>
-
-          {/* Thread */}
           <div
             className="flex-1 overflow-y-auto p-5"
             ref={el => { tweetRefs.current[pk] = el }}
@@ -219,20 +234,18 @@ export default function GenerateTab({
               }}
               className="mt-2 text-xs text-text3 hover:text-text2 transition-colors"
             >
-              ＋ Add tweet
+              + Add tweet
             </button>
           </div>
         </div>
       )
     }
 
-    // Single editor (LinkedIn, Substack, Rednote, etc.)
     return (
       <div
         className={`plat-editor flex-1 flex flex-col overflow-hidden ${activePlat === pk ? '' : 'hidden'}`}
         key={pk}
       >
-        {/* Editor header */}
         <div className="flex items-center gap-2 px-5 py-3 border-b border-border flex-shrink-0">
           <span className="text-[15px]">{cfg.icon}</span>
           <span className="text-[13px] font-semibold text-text">{cfg.name}</span>
@@ -246,8 +259,6 @@ export default function GenerateTab({
             </button>
           )}
         </div>
-
-        {/* Content area */}
         <div className="flex-1 overflow-y-auto">
           {pk === 'rednote' && showCarousel ? (
             <RednoteCarousel content={content} />
@@ -264,8 +275,6 @@ export default function GenerateTab({
             </div>
           )}
         </div>
-
-        {/* Footer with char count */}
         <div className="flex items-center justify-between px-5 py-2 border-t border-border flex-shrink-0">
           <span className="text-[11px] text-text3">{content.length} chars</span>
         </div>
@@ -297,7 +306,6 @@ export default function GenerateTab({
           </button>
         </div>
 
-        {/* Platform nav list */}
         <div className="flex-1 overflow-y-auto p-2.5">
           {platforms.length === 0 ? (
             <div className="px-3 py-3 text-xs text-text3">No platforms selected</div>
@@ -339,7 +347,7 @@ export default function GenerateTab({
       {/* Right editor area */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Core insight strip */}
-        {coreInsight && (
+        {coreInsight && !generating && (
           <div className="px-5 py-2.5 border-b border-border bg-bg2 flex-shrink-0">
             <div className="text-[10px] font-bold uppercase tracking-[.07em] text-text3 mb-1">Core insight</div>
             <div className="text-[13px] text-text2 leading-relaxed">{coreInsight}</div>
@@ -348,7 +356,16 @@ export default function GenerateTab({
 
         {/* Editor content */}
         <div className="flex-1 overflow-hidden flex flex-col">
-          {!hasContent ? (
+          {generating ? (
+            // Loading state inside Generate tab (Fix 3)
+            <div className="flex-1 flex flex-col items-center justify-center text-center gap-3 p-10">
+              <div className="w-8 h-8 border-[2.5px] border-border2 border-t-accent rounded-full animate-spin" />
+              <div className="font-serif text-xl text-text2">Generating content…</div>
+              <div className="text-[13px] text-text3 leading-relaxed max-w-[300px]">
+                Creating platform-native posts from your sources. This takes 10-20 seconds.
+              </div>
+            </div>
+          ) : !hasContent ? (
             <div className="flex-1 flex flex-col items-center justify-center text-center gap-2 p-10">
               <div className="text-[36px] opacity-[.18] mb-1.5">✦</div>
               <div className="font-serif text-xl text-text2">Ready to generate</div>
@@ -361,18 +378,18 @@ export default function GenerateTab({
               <div className="text-[13px] text-text3">Select a platform from the sidebar</div>
             </div>
           ) : (
-            <>
-              {/* Render all editors (only active one is visible) */}
-              <div className="flex-1 overflow-hidden flex flex-col">
-                {platforms.map(pk => renderEditor(pk))}
-              </div>
-            </>
+            <div className="flex-1 overflow-hidden flex flex-col">
+              {platforms.map(pk => renderEditor(pk))}
+            </div>
           )}
         </div>
 
-        {/* Refine bar */}
-        {hasContent && activePlat && (
+        {/* Refine bar — only for active platform */}
+        {hasContent && activePlat && !generating && (
           <div className="flex items-center gap-2 px-5 py-3 border-t border-border flex-shrink-0 bg-bg">
+            <span className="text-[11px] text-text3 flex-shrink-0">
+              {PLATS[activePlat]?.icon} {PLATS[activePlat]?.name}
+            </span>
             <input
               type="text"
               value={refineText}
@@ -398,7 +415,6 @@ export default function GenerateTab({
   )
 }
 
-// Tweet card component
 function TweetCard({ index, text, onBlur }: { index: number; text: string; onBlur: () => void }) {
   const [charCount, setCharCount] = useState(text.length)
 

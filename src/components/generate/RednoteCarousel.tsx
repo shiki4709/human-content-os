@@ -18,7 +18,23 @@ type BgStyle = {
   paint: (ctx: CanvasRenderingContext2D, W: number, H: number) => void
 }
 
+// Fix 4: Cream (奶油) is first so it's the default
 const BG_PRESETS: BgStyle[] = [
+  {
+    id: 'cream', label: '🧈 奶油', textColor: '#3d1f0a', accentColor: '#92400e',
+    paint(ctx, W, H) {
+      ctx.fillStyle = '#fdf6e8'; ctx.fillRect(0, 0, W, H)
+      const g = ctx.createRadialGradient(W * .3, H * .3, 0, W * .3, H * .3, W * .8)
+      g.addColorStop(0, 'rgba(251,191,36,.18)'); g.addColorStop(1, 'rgba(0,0,0,0)')
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H)
+      ctx.globalAlpha = .025
+      for (let i = 0; i < 600; i++) {
+        ctx.fillStyle = '#78350f'
+        ctx.fillRect(Math.random() * W, Math.random() * H, 1.5, 1.5)
+      }
+      ctx.globalAlpha = 1
+    },
+  },
   {
     id: 'blossom', label: '🌸 樱花', textColor: '#fff', accentColor: '#fce7f3',
     paint(ctx, W, H) {
@@ -55,21 +71,6 @@ const BG_PRESETS: BgStyle[] = [
         ctx.globalAlpha = Math.random() * .4 + .05
         ctx.beginPath(); ctx.arc(Math.random() * W, Math.random() * H, Math.random() * 2 + .5, 0, Math.PI * 2)
         ctx.fill()
-      }
-      ctx.globalAlpha = 1
-    },
-  },
-  {
-    id: 'cream', label: '🧈 奶油', textColor: '#3d1f0a', accentColor: '#92400e',
-    paint(ctx, W, H) {
-      ctx.fillStyle = '#fdf6e8'; ctx.fillRect(0, 0, W, H)
-      const g = ctx.createRadialGradient(W * .3, H * .3, 0, W * .3, H * .3, W * .8)
-      g.addColorStop(0, 'rgba(251,191,36,.18)'); g.addColorStop(1, 'rgba(0,0,0,0)')
-      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H)
-      ctx.globalAlpha = .025
-      for (let i = 0; i < 600; i++) {
-        ctx.fillStyle = '#78350f'
-        ctx.fillRect(Math.random() * W, Math.random() * H, 1.5, 1.5)
       }
       ctx.globalAlpha = 1
     },
@@ -121,7 +122,6 @@ function splitIntoSlides(text: string): Slide[] {
     slides.push({ type: 'cta', text: paras[paras.length - 1].slice(0, 80) })
     return slides.slice(0, 4)
   }
-  // Fallback: split by char count
   const result: Slide[] = []
   let cur = ''
   for (const ch of text) {
@@ -150,26 +150,31 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
   ctx.closePath()
 }
 
-function wrapText(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, maxW: number, lineH: number): number {
+function wrapText(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, maxW: number, lineH: number, maxLines?: number): number {
   const chars = Array.from(text)
   let line = ''
   const lines: string[] = []
   for (const ch of chars) {
+    // Hard limit: 28 chars per line
+    if (line.length >= 28) { lines.push(line); line = ch; continue }
     const test = line + ch
     if (ctx.measureText(test).width > maxW && line) { lines.push(line); line = ch }
     else line = test
   }
   if (line) lines.push(line)
-  lines.forEach((l, i) => ctx.fillText(l, x, y + i * lineH))
-  return lines.length
+  const drawLines = maxLines ? lines.slice(0, maxLines) : lines
+  drawLines.forEach((l, i) => ctx.fillText(l, x, y + i * lineH))
+  return drawLines.length
 }
 
+// Fix 2: Rednote slide drawing with bounded text
 function drawRednoteSlide(ctx: CanvasRenderingContext2D, slide: Slide, style: BgStyle, W: number, H: number) {
   const dark = style.textColor === '#fff'
   const tc = style.textColor
   const ac = style.accentColor
   const pad = 30
   const type = slide.type || 'content'
+  const contentW = W - pad * 2
 
   // Ambient depth shapes
   ctx.save()
@@ -201,120 +206,116 @@ function drawRednoteSlide(ctx: CanvasRenderingContext2D, slide: Slide, style: Bg
     ctx.fillText('1', W * 0.5, H * 0.75)
     ctx.restore()
 
-    // Main headline
+    // Main headline — capped font size
     ctx.fillStyle = tc
-    const headline = (slide.text || '').slice(0, 60)
-    const fontSize = headline.length > 20 ? 34 : 40
+    const headline = (slide.text || '').slice(0, 56)
+    const fontSize = Math.min(headline.length > 20 ? 30 : 36, 36)
     ctx.font = `800 ${fontSize}px DM Sans,sans-serif`
     ctx.textAlign = 'left'
-    const linesDrawn = wrapText(ctx, headline, pad, H * 0.38, W - pad * 2, fontSize * 1.3)
+    const linesDrawn = wrapText(ctx, headline, pad, H * 0.38, contentW, fontSize * 1.25, 3)
 
     // Accent underline
     ctx.fillStyle = dark ? 'rgba(255,255,255,0.45)' : ac
-    ctx.fillRect(pad, H * 0.38 + linesDrawn * (fontSize * 1.3) + 8, 48, 3)
+    ctx.fillRect(pad, H * 0.38 + linesDrawn * (fontSize * 1.25) + 8, 48, 3)
 
-    // Subline
-    if (slide.sub) {
-      ctx.save()
-      ctx.globalAlpha = 0.65
-      ctx.fillStyle = tc
-      ctx.font = '400 16px DM Sans,sans-serif'
-      wrapText(ctx, slide.sub.slice(0, 60), pad, H * 0.38 + linesDrawn * (fontSize * 1.3) + 28, W - pad * 2, 22)
-      ctx.restore()
-    }
-
-    // Bottom swipe cue
+    // Bottom swipe cue — inside pad
     ctx.save()
     ctx.globalAlpha = 0.4
     ctx.fillStyle = tc
     ctx.font = '500 12px DM Sans,sans-serif'
     ctx.textAlign = 'center'
-    ctx.fillText('向左滑动查看更多 →', W / 2, H - pad - 2)
+    ctx.fillText('向左滑动查看更多 →', W / 2, H - pad - 10)
     ctx.restore()
 
   } else if (type === 'cta') {
-    ctx.font = '80px serif'
+    ctx.font = '64px serif'
     ctx.textAlign = 'center'
-    ctx.fillText('💕', W / 2, H * 0.35)
+    ctx.fillText('💕', W / 2, H * 0.33)
 
     ctx.fillStyle = tc
-    ctx.font = '800 28px DM Sans,sans-serif'
+    ctx.font = '800 24px DM Sans,sans-serif'
     ctx.textAlign = 'center'
-    wrapText(ctx, slide.text || '关注 · 收藏 · 点赞', W / 2, H * 0.48, W - pad * 2, 38)
+    wrapText(ctx, (slide.text || '关注 · 收藏 · 点赞').slice(0, 56), W / 2, H * 0.46, contentW, 32, 3)
 
     ctx.save()
     ctx.globalAlpha = 0.5
     ctx.fillStyle = tc
-    ctx.font = '400 15px DM Sans,sans-serif'
-    ctx.fillText('感谢你的支持 🙏', W / 2, H * 0.48 + 82)
+    ctx.font = '400 14px DM Sans,sans-serif'
+    ctx.fillText('感谢你的支持 🙏', W / 2, H * 0.46 + 72)
     ctx.restore()
     ctx.textAlign = 'left'
 
   } else {
-    // CONTENT slide
+    // CONTENT slide — Fix 2: reduced font sizes, tighter spacing, hard bounds
     const nums = ['②', '③', '④', '⑤', '⑥']
     const numLabel = nums[Math.min((slide._idx || 1) - 1, 4)]
     ctx.fillStyle = tc
-    ctx.font = '900 56px DM Sans,sans-serif'
+    ctx.font = '900 40px DM Sans,sans-serif'
     ctx.textAlign = 'left'
-    ctx.fillText(numLabel, pad, pad + 56)
+    ctx.fillText(numLabel, pad, pad + 44)
 
     // Rule after number
     ctx.fillStyle = dark ? 'rgba(255,255,255,0.28)' : ac
-    ctx.fillRect(pad, pad + 70, W - pad * 2, 2)
+    ctx.fillRect(pad, pad + 56, contentW, 2)
 
-    // Content lines
+    // Content lines — max 17px font, 28 chars per line, max 6 lines
     const rawLines = (slide.text || '').split('\n').filter(Boolean)
     const lines: string[] = []
     rawLines.forEach(l => {
-      if (l.length <= 30) { lines.push(l); return }
+      if (l.length <= 28) { lines.push(l); return }
       for (let i = 0; i < l.length; i += 28) lines.push(l.slice(i, i + 28))
     })
 
-    let y = pad + 100
-    const lineH = 38
-    lines.slice(0, 7).forEach((line, i) => {
+    let y = pad + 82
+    const lineH = 30
+    const maxLines = 6
+    // Ensure text + footer fits: footer at H-30, so max y = H - 30 - pad
+    const maxY = H - 30 - pad
+
+    lines.slice(0, maxLines).forEach((line, i) => {
+      if (y > maxY) return
+
       // Accent tick
       ctx.fillStyle = dark ? 'rgba(255,255,255,0.4)' : ac
-      ctx.fillRect(pad, y - 14, 16, 2)
+      ctx.fillRect(pad, y - 10, 14, 2)
 
       ctx.fillStyle = tc
       const isFirst = i === 0
-      ctx.font = `${isFirst ? '700' : '500'} ${isFirst ? 20 : 18}px DM Sans,sans-serif`
+      ctx.font = `${isFirst ? '700' : '500'} ${isFirst ? 17 : 15}px DM Sans,sans-serif`
       ctx.globalAlpha = isFirst ? 1 : 0.82
       ctx.textAlign = 'left'
-      ctx.fillText(line.slice(0, 30), pad + 24, y)
+      ctx.fillText(line.slice(0, 28), pad + 22, y)
       ctx.globalAlpha = 1
-      y += isFirst ? lineH + 4 : lineH
+      y += isFirst ? lineH + 2 : lineH
     })
 
-    if (lines.length > 7) {
+    if (lines.length > maxLines && y <= maxY) {
       ctx.save()
       ctx.globalAlpha = 0.3
       ctx.fillStyle = tc
-      ctx.font = '400 13px DM Sans,sans-serif'
-      ctx.fillText('…', pad + 24, y)
+      ctx.font = '400 12px DM Sans,sans-serif'
+      ctx.fillText('…', pad + 22, y)
       ctx.restore()
     }
   }
 
-  // Footer brand line
+  // Footer brand line — always inside bounds at H-30
   ctx.save()
   ctx.globalAlpha = 0.18
   ctx.fillStyle = tc
-  ctx.fillRect(pad, H - 24, W - pad * 2, 1)
+  ctx.fillRect(pad, H - 30, contentW, 1)
   ctx.globalAlpha = 0.45
   ctx.fillStyle = tc
   ctx.font = '600 10px DM Sans,sans-serif'
   ctx.textAlign = 'left'
-  ctx.fillText('HUMAN', pad, H - 10)
+  ctx.fillText('HUMAN', pad, H - 16)
   ctx.textAlign = 'right'
-  ctx.fillText('小红书', W - pad, H - 10)
+  ctx.fillText('小红书', W - pad, H - 16)
   ctx.restore()
 }
 
 export default function RednoteCarousel({ content }: { content: string }) {
-  const [styleIdx, setStyleIdx] = useState(0)
+  const [styleIdx, setStyleIdx] = useState(0) // 0 = cream (奶油) by default
   const [curIdx, setCurIdx] = useState(0)
   const [slides, setSlides] = useState<Slide[]>([])
   const canvasRefs = useRef<(HTMLCanvasElement | null)[]>([])
@@ -322,7 +323,6 @@ export default function RednoteCarousel({ content }: { content: string }) {
 
   const style = BG_PRESETS[styleIdx]
 
-  // Split content into slides
   useEffect(() => {
     const s = splitIntoSlides(content)
     s.forEach((sl, i) => { sl._idx = i })
@@ -330,7 +330,6 @@ export default function RednoteCarousel({ content }: { content: string }) {
     setCurIdx(0)
   }, [content])
 
-  // Draw all slides when slides or style changes
   const drawAll = useCallback(() => {
     slides.forEach((slide, i) => {
       const canvas = canvasRefs.current[i]
@@ -347,7 +346,6 @@ export default function RednoteCarousel({ content }: { content: string }) {
   }, [slides, style])
 
   useEffect(() => {
-    // Small delay to ensure canvases are in DOM
     const t = setTimeout(drawAll, 50)
     return () => clearTimeout(t)
   }, [drawAll])
@@ -368,10 +366,6 @@ export default function RednoteCarousel({ content }: { content: string }) {
     if (idx < 0 || idx >= slides.length) return
     setCurIdx(idx)
     showSlide(idx)
-  }
-
-  function handleStyleChange(idx: number) {
-    setStyleIdx(idx)
   }
 
   function handleDownload() {
@@ -439,7 +433,7 @@ export default function RednoteCarousel({ content }: { content: string }) {
           {BG_PRESETS.map((bg, i) => (
             <button
               key={bg.id}
-              onClick={() => handleStyleChange(i)}
+              onClick={() => setStyleIdx(i)}
               className={`px-2.5 py-1 rounded-full text-[11px] border transition-all ${
                 i === styleIdx
                   ? 'border-accent bg-acl text-accent font-medium'

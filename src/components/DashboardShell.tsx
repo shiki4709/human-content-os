@@ -44,6 +44,7 @@ export default function DashboardShell({
   const [enabledPlatforms, setEnabledPlatforms] = useState<Record<string, boolean>>(DEFAULT_PLATFORMS)
   const [generatedContent, setGeneratedContent] = useState<Record<string, string>>({})
   const [coreInsight, setCoreInsight] = useState('')
+  const [pendingGenerate, setPendingGenerate] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
@@ -113,15 +114,19 @@ export default function DashboardShell({
     }
   }
 
+  // Navigate to Generate tab and trigger generation
+  function handleRequestGenerate() {
+    setActiveTab('generate')
+    setPendingGenerate(true)
+  }
+
   // Save generated content to Supabase
   async function handleGenerationComplete(results: Record<string, string>, insight: string) {
     setGeneratedContent(results)
     setCoreInsight(insight)
-    setActiveTab('generate')
 
     if (!user || user.id === 'dev') return
 
-    // Persist each platform's content
     for (const [platform, content] of Object.entries(results)) {
       try {
         await supabase.from('generated_content').upsert({
@@ -227,7 +232,7 @@ export default function DashboardShell({
             onToneChange={setTone}
             enabledPlatforms={enabledPlatforms}
             onEnabledPlatformsChange={setEnabledPlatforms}
-            onGenerate={handleGenerationComplete}
+            onRequestGenerate={handleRequestGenerate}
           />
         </div>
         <div className={activeTab === 'generate' ? 'flex flex-row h-full' : 'hidden'}>
@@ -240,6 +245,9 @@ export default function DashboardShell({
             onGeneratedContentChange={setGeneratedContent}
             coreInsight={coreInsight}
             onCoreInsightChange={setCoreInsight}
+            pendingGenerate={pendingGenerate}
+            onPendingGenerateConsumed={() => setPendingGenerate(false)}
+            onGenerationComplete={handleGenerationComplete}
           />
         </div>
         <div className={activeTab === 'publish' ? 'flex flex-col h-full' : 'hidden'}>
