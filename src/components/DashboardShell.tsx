@@ -159,8 +159,17 @@ export default function DashboardShell({
   const sourceCount = sources.length
   const sourceBadge = sourceCount > 0 ? sourceCount : null
 
+  const isDevMode = user.id === 'dev'
+
   return (
     <div className="h-screen flex flex-col overflow-hidden">
+      {/* Dev mode banner */}
+      {isDevMode && (
+        <div className="bg-[#fef3c7] border-b border-[#fbbf24]/30 px-6 py-1.5 text-[12px] text-[#92400e] text-center flex-shrink-0">
+          Running in dev mode — Supabase not configured
+        </div>
+      )}
+
       {/* TOPBAR */}
       <div className="h-[50px] flex items-center justify-between px-6 border-b border-border flex-shrink-0">
         <div className="font-serif text-[19px] tracking-tight">

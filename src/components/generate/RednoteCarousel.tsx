@@ -411,7 +411,7 @@ export default function RednoteCarousel({ content }: { content: string }) {
     setCurIdx(0)
   }, [content])
 
-  const drawAll = useCallback(() => {
+  const drawAll = useCallback((activeIdx?: number) => {
     slides.forEach((slide, i) => {
       const canvas = canvasRefs.current[i]
       if (!canvas) return
@@ -421,8 +421,9 @@ export default function RednoteCarousel({ content }: { content: string }) {
       style.paint(ctx, CW, CH)
       drawRednoteSlide(ctx, slide, style)
     })
-    showSlide(curIdx)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Use provided index or fall back to 0 — avoids stale closure
+    const idx = activeIdx ?? 0
+    showSlide(idx)
   }, [slides, style])
 
   useEffect(() => {
@@ -525,25 +526,32 @@ export default function RednoteCarousel({ content }: { content: string }) {
 
       <div className="flex items-center gap-2">
         <button
-          onClick={() => { drawAll() }}
+          onClick={() => { drawAll(curIdx) }}
           className="px-3 py-1.5 rounded-lg border border-border2 text-[12px] text-text2 hover:bg-bg2 transition-all"
         >
           ↺ Regenerate
         </button>
-        <div className="ml-auto flex gap-2">
+        <div className="ml-auto">
           <button
             onClick={handleDownload}
             className="px-3 py-1.5 rounded-lg border border-border2 text-[12px] text-text2 hover:bg-bg2 transition-all"
           >
             ⬇ Download
           </button>
-          <button
-            onClick={handleCopyDraft}
-            className="px-3 py-1.5 rounded-lg bg-[#ff2442] text-white text-[12px] font-medium hover:bg-[#e61e3a] transition-all"
-          >
-            🌸 Copy & draft
-          </button>
         </div>
+      </div>
+
+      <div className="mt-3 flex flex-col items-center gap-1.5">
+        <button
+          onClick={handleCopyDraft}
+          title="Copies post text to clipboard — paste into Rednote app"
+          className="px-4 py-2 rounded-lg bg-[#ff2442] text-white text-[12.5px] font-semibold hover:bg-[#e61e3a] transition-all"
+        >
+          📋 Copy text
+        </button>
+        <span className="text-[10.5px] text-text3 leading-snug text-center">
+          To share images, use ⬇ Download then upload manually to Rednote
+        </span>
       </div>
 
       <div className="fixed -left-[9999px] top-0 invisible pointer-events-none">

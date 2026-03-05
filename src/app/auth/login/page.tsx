@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -10,13 +10,27 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [supabaseConfigured, setSupabaseConfigured] = useState(true)
   const router = useRouter()
   const supabase = createClient()
+
+  useEffect(() => {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    if (!url || !key) setSupabaseConfigured(false)
+  }, [])
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
     setError('')
     setLoading(true)
+
+    // Dev bypass — skip Supabase auth
+    if (!supabaseConfigured) {
+      router.push('/dashboard')
+      router.refresh()
+      return
+    }
 
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) {
@@ -29,6 +43,10 @@ export default function LoginPage() {
   }
 
   async function handleGoogleLogin() {
+    if (!supabaseConfigured) {
+      setError('Google OAuth requires Supabase to be configured')
+      return
+    }
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -45,6 +63,17 @@ export default function LoginPage() {
           <h1 className="font-serif text-3xl tracking-tight text-text">Human</h1>
           <p className="text-text3 text-sm mt-1">content OS</p>
         </div>
+
+        {!supabaseConfigured && (
+          <div className="mb-3 p-3 rounded-xl bg-[#fef3c7] border border-[#fbbf24]/30 text-[#92400e] text-[12.5px] leading-relaxed">
+            <span className="font-semibold">Supabase not configured.</span> Add{' '}
+            <code className="text-[11px] bg-[#fde68a]/50 px-1 py-0.5 rounded">NEXT_PUBLIC_SUPABASE_URL</code> and{' '}
+            <code className="text-[11px] bg-[#fde68a]/50 px-1 py-0.5 rounded">NEXT_PUBLIC_SUPABASE_ANON_KEY</code>{' '}
+            to <code className="text-[11px] bg-[#fde68a]/50 px-1 py-0.5 rounded">.env.local</code> to enable auth.
+            <br />
+            <span className="opacity-75">Enter any email/password to continue in dev mode.</span>
+          </div>
+        )}
 
         <div className="bg-bg rounded-2xl border border-border p-6 shadow-sm">
           <h2 className="font-serif text-xl mb-1">Welcome back</h2>
