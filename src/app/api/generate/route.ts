@@ -1,12 +1,50 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 const PPROMPTS: Record<string, string> = {
-  linkedin: '[LINKEDIN]\nProfessional post 150-300 words. Hook first line. Line breaks. 3-5 hashtags. CTA end.[/LINKEDIN]',
-  x: '[X]\nThread of 5-8 tweets. MUST use format: TWEET_1: text | TWEET_2: text | etc. Each tweet ≤280 chars. First tweet = hook.[/X]',
-  substack: '[SUBSTACK]\nNewsletter section 250-400 words. Personal, conversational, smart. No hashtags. Warm tone.[/SUBSTACK]',
-  rednote: '[REDNOTE]\nWrite ENTIRELY in Simplified Chinese. Native 小红书 style — NOT translated. 200-400 chars. 干货/分享/种草 vibe. Heavy emojis 🌟✨💡🔥. Chinese hashtags end.[/REDNOTE]',
-  notejp: '[NOTEJP]\nWrite ENTIRELY in Japanese. Native note.com style — NOT translated. 300-500 chars. Reflective, warm, slightly formal. Subtle emojis. Japanese hashtags.[/NOTEJP]',
-  instagram: '[INSTAGRAM]\nCaption 80-150 words. Visual-forward, aspirational, lifestyle tone. Strong opening. 10-15 hashtags after line break.[/INSTAGRAM]',
+  linkedin: `[LINKEDIN]
+Hook: bold single-sentence opener (max 12 words) before the "see more" cutoff. Use curiosity gap, contrarian take, or specific number. Never start with "I" — start with the insight.
+Body: 1-2 sentence paragraphs with white space between each. No walls of text.
+Structure: Hook → Personal insight or short story → 3 actionable takeaways (use → or • bullets, not dashes) → Question CTA asking the reader to engage.
+150-300 words, conversational not corporate, first-person voice.
+Max 3 relevant hashtags at the very end.
+[/LINKEDIN]`,
+
+  x: `[X]
+MUST use format: TWEET_1: text | TWEET_2: text | etc.
+Tweet 1 (hook): bold claim or surprising stat + "Thread 🧵" — max 240 chars.
+Tweets 2-6: one idea per tweet, short punchy sentences, line breaks not paragraphs. Each tweet max 280 chars.
+Tweet 7 (CTA): question to followers or call to action.
+5-7 tweets total — sweet spot for completion rate.
+Use 1-2 hashtags max in final tweet only.
+NEVER use ー or any Japanese/CJK punctuation. English ASCII punctuation only.
+[/X]`,
+
+  substack: `[SUBSTACK]
+Opening: one punchy paragraph that earns the scroll — no throat-clearing.
+3-4 sections with bold subheadings (## Markdown style).
+Conversational but substantive, 400-600 words. Personal voice.
+End with "What do you think?" or a reflective question that invites reply.
+No hashtags. No promotional CTAs.
+[/SUBSTACK]`,
+
+  rednote: `[REDNOTE]
+Write ENTIRELY in native Simplified Chinese. 绝对不能翻译，要原生中文表达。
+开头: emoji + hook sentence that stops the scroll (pain point or bold claim)
+中间: 3 numbered points 第一/第二/第三, each with emoji, max 2 lines each
+结尾: 关注+点赞+收藏 CTA
+200-350字, 适量emoji, 亲切口语化
+绝对不能用 ー 或任何日文标点。只用中文标点。
+hashtags: 3-5 relevant Chinese tags at end like #干货分享 #职场成长
+[/REDNOTE]`,
+
+  notejp: `[NOTEJP]
+Write ENTIRELY in Japanese. Native note.com style — NOT translated.
+300-500 chars. Reflective, warm, slightly formal. Subtle emojis. Japanese hashtags.
+[/NOTEJP]`,
+
+  instagram: `[INSTAGRAM]
+Caption 80-150 words. Visual-forward, aspirational, lifestyle tone. Strong opening. 10-15 hashtags after line break.
+[/INSTAGRAM]`,
 }
 
 const TAG_MAP: Record<string, string> = {

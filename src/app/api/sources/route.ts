@@ -8,21 +8,20 @@ Return a rich summary with headline, main arguments, key data points, and quotes
   search: (p) => `You are searching the web. Query: "${p.query}" — Time range: ${p.period}.
 
 Return 5-7 specific, realistic findings/headlines with brief context each. Format as a structured digest. 300-600 words.`,
+}
 
-  youtube: (p) => `You are pulling transcripts from YouTube channel "${p.channel}" — latest ${p.count} video(s).
+// Stub messages for source types that require external API auth
+const STUB_MESSAGES: Record<string, (p: Record<string, string>) => string> = {
+  twitter: (p) => `Real-time tweets from ${p.handle} cannot be fetched without X API authentication.\n\nTo enable live tweet fetching:\n1. Get X API credentials at developer.x.com\n2. Add X_CLIENT_ID and X_CLIENT_SECRET to .env.local\n3. Restart the dev server\n\nIn the meantime, you can manually paste tweets or notes about ${p.handle}'s recent content here and edit this text.`,
 
-Return realistic highlights: video titles, key topics discussed, notable quotes or insights, timestamps of key moments. 300-600 words.`,
-
-  twitter: (p) => `You are fetching tweets from ${p.handle} from the ${p.period} period.
-
-Return 6-10 realistic posts/threads from this account — their actual writing style, opinions, key ideas. Include any notable replies or threads. 300-500 words.`,
+  youtube: (p) => `Videos from "${p.channel}" cannot be fetched without YouTube Data API authentication.\n\nTo enable live video fetching:\n1. Get a YouTube Data API key at console.cloud.google.com\n2. Add YOUTUBE_API_KEY to .env.local\n3. Restart the dev server\n\nIn the meantime, you can manually paste video summaries or notes about ${p.channel}'s recent content here and edit this text.`,
 }
 
 const LOADING_MESSAGES: Record<string, string | ((p: Record<string, string>) => string)> = {
   url: 'Fetching page…',
   search: 'Searching the web…',
-  youtube: 'Pulling channel videos…',
-  twitter: (p) => `Fetching ${p.handle} tweets…`,
+  youtube: 'Checking YouTube API…',
+  twitter: (p) => `Checking ${p.handle}…`,
   notes: 'Processing…',
 }
 
@@ -35,6 +34,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       content: extra.content,
       label: 'My notes · ' + new Date().toLocaleDateString('en', { month: 'short', day: 'numeric' }),
+    })
+  }
+
+  // X/Twitter and YouTube: return honest stub instead of fabricating content
+  const stubFn = STUB_MESSAGES[type]
+  if (stubFn) {
+    return NextResponse.json({
+      content: stubFn(extra),
+      label: getAutoLabel(type, extra),
+      loadingMessage: getLoadingMessage(type, extra),
     })
   }
 
