@@ -11,6 +11,8 @@ type Props = {
   onConnectionsChange: (connected: Record<string, boolean>) => void
 }
 
+const hasOpenClawKey = process.env.NEXT_PUBLIC_OPENCLAW_CONFIGURED === 'true'
+
 const PLAT_META: Record<string, { icon: string; name: string; color: string; oauth: boolean }> = {
   linkedin: { icon: '💼', name: 'LinkedIn', color: 'bg-[#0a66c2]', oauth: true },
   x: { icon: '𝕏', name: 'X / Twitter', color: 'bg-[#000]', oauth: true },
@@ -192,6 +194,49 @@ export default function PublishTab({
     setPublishing(p => ({ ...p, [platform]: false }))
   }
 
+  // OpenClaw auto-post
+  async function handleOpenClaw(platform: string) {
+    const content = generatedContent[platform]
+    if (!content) {
+      toast('No content to publish — generate first')
+      return
+    }
+
+    const name = PLAT_META[platform]?.name || platform
+    toast(`\u{1F916} OpenClaw is posting to ${name}...`)
+    setPublishing(p => ({ ...p, [platform]: true }))
+
+    try {
+      const res = await fetch('/api/publish/openclaw', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ platform, content, action: 'post' }),
+      })
+      const data = await res.json()
+
+      if (!res.ok) {
+        toast(`OpenClaw failed: ${data.error || 'Unknown error'}`)
+        setPublishLog(prev => [{
+          id: crypto.randomUUID(),
+          user_id: '',
+          platform,
+          content,
+          status: 'failed' as const,
+          platform_post_id: null,
+          created_at: new Date().toISOString(),
+        }, ...prev])
+      } else {
+        if (data.entry) {
+          setPublishLog(prev => [data.entry, ...prev])
+        }
+        toast(`\u2713 Posted to ${name}!`)
+      }
+    } catch {
+      toast('OpenClaw failed — check connection')
+    }
+    setPublishing(p => ({ ...p, [platform]: false }))
+  }
+
   // Platforms with generated content
   const platformsWithContent = Object.keys(generatedContent).filter(
     k => generatedContent[k] && enabledPlatforms[k]
@@ -276,24 +321,41 @@ export default function PublishTab({
                   <div className="flex items-center gap-2.5 mb-2">
                     <span className="text-[15px]">{meta.icon}</span>
                     <span className="text-[13px] font-semibold text-text flex-1">{meta.name}</span>
-                    <button
-                      onClick={() => handlePublish(pk)}
-                      disabled={isLoading}
-                      className={`px-3.5 py-[6px] rounded-lg text-[12px] font-semibold text-white transition-all disabled:opacity-50 ${meta.color} hover:opacity-90`}
-                    >
-                      {isLoading ? (
-                        <span className="flex items-center gap-1.5">
-                          <span className="w-3 h-3 border-[1.5px] border-white/30 border-t-white rounded-full animate-spin" />
-                          {isCopyOnly ? 'Copying…' : 'Publishing…'}
-                        </span>
-                      ) : isCopyOnly ? (
-                        pk === 'rednote' ? '🌸 Copy & draft' : 'Copy & draft'
-                      ) : isConnected ? (
-                        'Publish'
-                      ) : (
-                        'Connect & Publish'
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => handlePublish(pk)}
+                        disabled={isLoading}
+                        className={`px-3.5 py-[6px] rounded-lg text-[12px] font-semibold text-white transition-all disabled:opacity-50 ${meta.color} hover:opacity-90`}
+                      >
+                        {isLoading ? (
+                          <span className="flex items-center gap-1.5">
+                            <span className="w-3 h-3 border-[1.5px] border-white/30 border-t-white rounded-full animate-spin" />
+                            {isCopyOnly ? 'Copying…' : 'Publishing…'}
+                          </span>
+                        ) : isCopyOnly ? (
+                          pk === 'rednote' ? '🌸 Copy & draft' : 'Copy & draft'
+                        ) : isConnected ? (
+                          'Publish'
+                        ) : (
+                          'Connect & Publish'
+                        )}
+                      </button>
+                      {isCopyOnly && (
+                        <button
+                          onClick={() => handleOpenClaw(pk)}
+                          disabled={!hasOpenClawKey || isLoading}
+                          className="px-3.5 py-[6px] rounded-lg text-[12px] font-semibold transition-all border border-[#7c3aed]/20 hover:opacity-90 disabled:cursor-not-allowed"
+                          style={{
+                            background: hasOpenClawKey ? 'rgba(124,58,237,0.08)' : 'rgba(124,58,237,0.04)',
+                            color: hasOpenClawKey ? '#7c3aed' : '#a78bfa',
+                            opacity: hasOpenClawKey ? 1 : 0.5,
+                          }}
+                          title={hasOpenClawKey ? 'Auto-post with OpenClaw browser automation' : 'Add OPENCLAW_API_KEY to .env.local to enable'}
+                        >
+                          🤖 Auto-post with OpenClaw
+                        </button>
                       )}
-                    </button>
+                    </div>
                   </div>
                   <div className="text-[12.5px] text-text2 leading-relaxed line-clamp-3 overflow-hidden">
                     {content.slice(0, 200)}{content.length > 200 ? '…' : ''}
@@ -313,6 +375,8 @@ export default function PublishTab({
             {publishLog.map(entry => {
               const meta = PLAT_META[entry.platform]
               const isDraft = entry.status === 'draft'
+              const isAutoPosted = entry.status === 'auto-posted'
+              const isFailed = entry.status === 'failed'
               const date = new Date(entry.created_at)
               const dateStr = date.toLocaleDateString('en', { month: 'short', day: 'numeric' })
               const timeStr = date.toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' })
@@ -330,12 +394,16 @@ export default function PublishTab({
                   <span className="text-[12px] text-text2 flex-1 truncate">{preview}</span>
                   <span
                     className={`text-[10.5px] font-semibold px-2 py-[2px] rounded-full flex-shrink-0 ${
-                      isDraft
+                      isFailed
+                        ? 'bg-[#fee2e2] text-[#991b1b]'
+                        : isAutoPosted
+                        ? 'bg-[#ede9fe] text-[#6d28d9]'
+                        : isDraft
                         ? 'bg-[#fef3c7] text-[#92400e]'
                         : 'bg-[#d1fae5] text-[#065f46]'
                     }`}
                   >
-                    {isDraft ? 'copied as draft' : 'published'}
+                    {isFailed ? 'failed' : isAutoPosted ? '🤖 auto-posted' : isDraft ? 'copied as draft' : 'published'}
                   </span>
                   <span className="text-[11px] text-text3 w-[90px] text-right flex-shrink-0">
                     {dateStr} {timeStr}

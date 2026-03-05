@@ -25,9 +25,10 @@ export interface PublishEntry {
   user_id: string
   platform: string
   content: string
-  status: 'published' | 'draft'
+  status: 'published' | 'draft' | 'auto-posted' | 'failed'
   platform_post_id: string | null
   created_at: string
+  campaign?: string
 }
 
 export type Platform = 'linkedin' | 'x' | 'substack' | 'rednote' | 'notejp' | 'instagram'
