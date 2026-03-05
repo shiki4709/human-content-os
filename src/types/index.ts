@@ -32,6 +32,13 @@ export interface PublishEntry {
 
 export type Platform = 'linkedin' | 'x' | 'substack' | 'rednote' | 'notejp' | 'instagram'
 
+export interface PlatformConnection {
+  platform: string
+  connected: boolean
+  expired: boolean
+  name?: string
+}
+
 export const BADGE_STYLES: Record<string, { bg: string; text: string; icon: string; label: string }> = {
   search:  { bg: 'bg-[#fef3c7]', text: 'text-[#92400e]', icon: '🔍', label: 'Web search' },
   youtube: { bg: 'bg-[#fee2e2]', text: 'text-[#991b1b]', icon: '▶️', label: 'YouTube' },

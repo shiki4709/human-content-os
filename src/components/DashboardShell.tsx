@@ -37,7 +37,7 @@ export default function DashboardShell({
   children: React.ReactNode
 }) {
   const [activeTab, setActiveTab] = useState<Tab>('sources')
-  const [connectedAccounts] = useState<Record<string, boolean>>({})
+  const [connectedAccounts, setConnectedAccounts] = useState<Record<string, boolean>>({})
   const [sources, setSources] = useState<Source[]>([])
   const [brandVoice, setBrandVoice] = useState('')
   const [tone, setTone] = useState('Thought leader')
@@ -66,6 +66,15 @@ export default function DashboardShell({
   useEffect(() => {
     loadSources()
   }, [loadSources])
+
+  // Handle OAuth return — auto-switch to publish tab
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const tab = params.get('tab')
+    if (tab === 'publish') {
+      setActiveTab('publish')
+    }
+  }, [])
 
   // Persist sources to Supabase
   async function handleSourcesChange(newSources: Source[]) {
@@ -251,7 +260,12 @@ export default function DashboardShell({
           />
         </div>
         <div className={activeTab === 'publish' ? 'flex flex-col h-full' : 'hidden'}>
-          <PublishTab />
+          <PublishTab
+            onNavigate={setActiveTab}
+            generatedContent={generatedContent}
+            enabledPlatforms={enabledPlatforms}
+            onConnectionsChange={setConnectedAccounts}
+          />
         </div>
       </div>
 
