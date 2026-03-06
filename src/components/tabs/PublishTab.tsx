@@ -5,7 +5,7 @@ import type { PublishEntry, PlatformConnection } from '@/types'
 import { toast } from '@/components/Toast'
 
 type Props = {
-  onNavigate: (tab: 'sources' | 'configure' | 'generate' | 'publish') => void
+  onNavigate: (tab: 'sources' | 'repurpose' | 'configure' | 'generate' | 'publish') => void
   generatedContent: Record<string, string>
   enabledPlatforms: Record<string, boolean>
   onConnectionsChange: (connected: Record<string, boolean>) => void

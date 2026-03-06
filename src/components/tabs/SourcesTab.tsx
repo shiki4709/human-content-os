@@ -7,7 +7,7 @@ import SourceCard from '@/components/sources/SourceCard'
 import { toast } from '@/components/Toast'
 
 type Props = {
-  onNavigate: (tab: 'sources' | 'configure' | 'generate' | 'publish') => void
+  onNavigate: (tab: 'sources' | 'repurpose' | 'configure' | 'generate' | 'publish') => void
   sources: Source[]
   onSourcesChange: (sources: Source[]) => void
 }

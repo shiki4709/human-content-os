@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import type { User } from '@supabase/supabase-js'
@@ -8,16 +8,18 @@ import type { Source } from '@/types'
 import SourcesTab from './tabs/SourcesTab'
 import ConfigureTab from './tabs/ConfigureTab'
 import GenerateTab from './tabs/GenerateTab'
+import RepurposeTab from './tabs/RepurposeTab'
 import PublishTab from './tabs/PublishTab'
 import ToastContainer from './Toast'
 
-type Tab = 'sources' | 'configure' | 'generate' | 'publish'
+type Tab = 'sources' | 'repurpose' | 'configure' | 'generate' | 'publish'
 
 const TABS: { key: Tab; label: string; num: number }[] = [
   { key: 'sources', label: 'Sources', num: 1 },
-  { key: 'configure', label: 'Configure', num: 2 },
-  { key: 'generate', label: 'Generate', num: 3 },
-  { key: 'publish', label: 'Publish', num: 4 },
+  { key: 'repurpose', label: 'Repurpose', num: 2 },
+  { key: 'configure', label: 'Configure', num: 3 },
+  { key: 'generate', label: 'Generate', num: 4 },
+  { key: 'publish', label: 'Publish', num: 5 },
 ]
 
 const DEFAULT_PLATFORMS: Record<string, boolean> = {
@@ -39,18 +41,22 @@ export default function DashboardShell({
   const [activeTab, setActiveTab] = useState<Tab>('sources')
   const [connectedAccounts, setConnectedAccounts] = useState<Record<string, boolean>>({})
   const [sources, setSources] = useState<Source[]>([])
-  const [brandVoice, setBrandVoice] = useState('')
+  const [brandVoice, setBrandVoice] = useState(
+    () => (user as unknown as Record<string, unknown>)?.user_metadata
+      ? ((user as unknown as Record<string, unknown>).user_metadata as Record<string, string>)?.brand_voice || ''
+      : ''
+  )
   const [tone, setTone] = useState('Thought leader')
   const [enabledPlatforms, setEnabledPlatforms] = useState<Record<string, boolean>>(DEFAULT_PLATFORMS)
   const [generatedContent, setGeneratedContent] = useState<Record<string, string>>({})
   const [coreInsight, setCoreInsight] = useState('')
   const [pendingGenerate, setPendingGenerate] = useState(false)
   const router = useRouter()
-  const supabase = createClient()
 
   // Load sources from Supabase on mount
   const loadSources = useCallback(async () => {
     if (!user || user.id === 'dev') return
+    const supabase = createClient()
     try {
       const { data } = await supabase
         .from('sources')
@@ -61,7 +67,7 @@ export default function DashboardShell({
     } catch {
       // Supabase not configured or table not created yet
     }
-  }, [user, supabase])
+  }, [user])
 
   useEffect(() => {
     loadSources()
@@ -76,12 +82,27 @@ export default function DashboardShell({
     }
   }, [])
 
+  // Persist brand voice to user metadata (debounced)
+  const brandVoiceTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  function handleBrandVoiceChange(value: string) {
+    setBrandVoice(value)
+    if (!user || user.id === 'dev') return
+    if (brandVoiceTimer.current) clearTimeout(brandVoiceTimer.current)
+    brandVoiceTimer.current = setTimeout(async () => {
+      const supabase = createClient()
+      try {
+        await supabase.auth.updateUser({ data: { brand_voice: value } })
+      } catch { /* ignore */ }
+    }, 1000)
+  }
+
   // Persist sources to Supabase
   async function handleSourcesChange(newSources: Source[]) {
     const prev = sources
     setSources(newSources)
 
     if (!user || user.id === 'dev') return
+    const supabase = createClient()
 
     // Determine what changed
     const prevIds = new Set(prev.map(s => s.id))
@@ -135,6 +156,7 @@ export default function DashboardShell({
     setCoreInsight(insight)
 
     if (!user || user.id === 'dev') return
+    const supabase = createClient()
 
     for (const [platform, content] of Object.entries(results)) {
       try {
@@ -150,6 +172,7 @@ export default function DashboardShell({
   }
 
   async function handleLogout() {
+    const supabase = createClient()
     await supabase.auth.signOut()
     router.push('/auth/login')
     router.refresh()
@@ -240,12 +263,15 @@ export default function DashboardShell({
             onSourcesChange={handleSourcesChange}
           />
         </div>
+        <div className={activeTab === 'repurpose' ? 'flex flex-col h-full' : 'hidden'}>
+          <RepurposeTab />
+        </div>
         <div className={activeTab === 'configure' ? 'flex flex-row h-full' : 'hidden'}>
           <ConfigureTab
             onNavigate={setActiveTab}
             sources={sources}
             brandVoice={brandVoice}
-            onBrandVoiceChange={setBrandVoice}
+            onBrandVoiceChange={handleBrandVoiceChange}
             tone={tone}
             onToneChange={setTone}
             enabledPlatforms={enabledPlatforms}

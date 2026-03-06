@@ -11,6 +11,8 @@ function parseXThread(content: string): string[] {
   if (parts.length > 1) return parts.map(t => t.split('|')[0].trim()).filter(Boolean)
   const byPipe = content.split('|').map(t => t.trim()).filter(t => t.length > 10)
   if (byPipe.length > 1) return byPipe
+  const byDash = content.split(/\n---\n/).map(t => t.trim()).filter(Boolean)
+  if (byDash.length > 1) return byDash
   const byNum = content.split(/\n\d+[/.]\s*/).filter(t => t.trim())
   if (byNum.length > 1) return byNum
   const words = content.split(' ')

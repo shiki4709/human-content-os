@@ -29,12 +29,19 @@ type Props = {
 }
 
 function parseXThread(content: string): string[] {
+  // 1. TWEET_N: format (from Claude generation)
   const parts = content.split(/TWEET_\d+:\s*/i).filter(t => t.trim())
   if (parts.length > 1) return parts.map(t => t.split('|')[0].trim()).filter(Boolean)
+  // 2. Pipe-separated TWEET_1: text | TWEET_2: text
   const byPipe = content.split('|').map(t => t.trim()).filter(t => t.length > 10)
   if (byPipe.length > 1) return byPipe
+  // 3. --- separator (spec format)
+  const byDash = content.split(/\n---\n/).map(t => t.trim()).filter(Boolean)
+  if (byDash.length > 1) return byDash
+  // 4. Numbered list
   const byNum = content.split(/\n\d+[/.]\s*/).filter(t => t.trim())
   if (byNum.length > 1) return byNum
+  // 5. Fallback: split by character limit
   const words = content.split(' ')
   const tweets: string[] = []
   let cur = ''

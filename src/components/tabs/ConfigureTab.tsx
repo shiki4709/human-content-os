@@ -5,7 +5,7 @@ import { BADGE_STYLES } from '@/types'
 import { toast } from '@/components/Toast'
 
 type Props = {
-  onNavigate: (tab: 'sources' | 'configure' | 'generate' | 'publish') => void
+  onNavigate: (tab: 'sources' | 'repurpose' | 'configure' | 'generate' | 'publish') => void
   sources: Source[]
   brandVoice: string
   onBrandVoiceChange: (v: string) => void
