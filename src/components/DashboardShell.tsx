@@ -15,8 +15,8 @@ import ToastContainer from './Toast'
 type Tab = 'sources' | 'repurpose' | 'configure' | 'generate' | 'publish'
 
 const TABS: { key: Tab; label: string; num: number }[] = [
-  { key: 'sources', label: 'Sources', num: 1 },
-  { key: 'repurpose', label: 'Repurpose', num: 2 },
+  { key: 'repurpose', label: 'Repurpose', num: 1 },
+  { key: 'sources', label: 'Sources', num: 2 },
   { key: 'configure', label: 'Configure', num: 3 },
   { key: 'generate', label: 'Generate', num: 4 },
   { key: 'publish', label: 'Publish', num: 5 },
@@ -38,7 +38,7 @@ export default function DashboardShell({
   user: User
   children: React.ReactNode
 }) {
-  const [activeTab, setActiveTab] = useState<Tab>('sources')
+  const [activeTab, setActiveTab] = useState<Tab>('repurpose')
   const [connectedAccounts, setConnectedAccounts] = useState<Record<string, boolean>>({})
   const [sources, setSources] = useState<Source[]>([])
   const [brandVoice, setBrandVoice] = useState(
