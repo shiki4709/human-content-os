@@ -45,14 +45,22 @@ function isUrl(str: string): boolean {
   return /^https?:\/\//i.test(str.trim())
 }
 
-export default function RepurposeTab() {
+type Props = {
+  brandVoice: string
+  tone: string
+  enabledPlatforms: Record<string, boolean>
+  onGeneratedContentChange: (content: Record<string, string>) => void
+  onNavigateToPublish: () => void
+}
+
+export default function RepurposeTab({
+  brandVoice,
+  tone,
+  enabledPlatforms,
+  onGeneratedContentChange,
+  onNavigateToPublish,
+}: Props) {
   const [input, setInput] = useState('')
-  const [platforms, setPlatforms] = useState<Record<string, boolean>>({
-    linkedin: true,
-    x: true,
-    substack: false,
-    rednote: false,
-  })
   const [results, setResults] = useState<Record<string, string>>({})
   const [fetching, setFetching] = useState(false)
   const [generating, setGenerating] = useState(false)
@@ -60,7 +68,7 @@ export default function RepurposeTab() {
   const editorRefs = useRef<Record<string, HTMLDivElement | null>>({})
   const tweetRefs = useRef<Record<string, HTMLDivElement | null>>({})
 
-  const selectedPlatforms = Object.keys(platforms).filter(k => platforms[k])
+  const selectedPlatforms = Object.keys(enabledPlatforms).filter(k => enabledPlatforms[k])
   const hasResults = Object.keys(results).length > 0
 
   async function handleRepurpose() {
@@ -70,7 +78,7 @@ export default function RepurposeTab() {
       return
     }
     if (selectedPlatforms.length === 0) {
-      toast('Select at least one platform')
+      toast('Enable platforms in Configure tab')
       return
     }
 
@@ -112,8 +120,8 @@ export default function RepurposeTab() {
         body: JSON.stringify({
           sources: [{ label: isUrl(trimmed) ? trimmed : 'Pasted content', content: sourceContent }],
           platforms: selectedPlatforms,
-          brandVoice: '',
-          tone: 'Thought leader',
+          brandVoice,
+          tone,
         }),
       })
 
@@ -125,6 +133,7 @@ export default function RepurposeTab() {
       }
 
       setResults(data.results || {})
+      onGeneratedContentChange(data.results || {})
       toast('Content repurposed')
     } catch {
       toast('Generation failed — check connection')
@@ -219,37 +228,28 @@ export default function RepurposeTab() {
           />
         </div>
 
-        {/* Platform checkboxes */}
+        {/* Platform summary */}
         <div className="mb-5">
           <div className="text-[11px] font-semibold uppercase tracking-[.07em] text-text3 mb-2.5">
-            Target platforms
+            Posting to
           </div>
-          <div className="flex flex-wrap gap-2">
-            {Object.entries(PLATS).map(([key, meta]) => (
-              <label
-                key={key}
-                onClick={() => setPlatforms(p => ({ ...p, [key]: !p[key] }))}
-                className={`flex items-center gap-2 px-3.5 py-2 rounded-lg border cursor-pointer transition-all select-none ${
-                  platforms[key]
-                    ? 'border-acb bg-acl'
-                    : 'border-border hover:border-border2'
-                }`}
-              >
-                <span className="text-[14px]">{meta.icon}</span>
-                <span className={`text-[13px] font-medium ${platforms[key] ? 'text-accent' : 'text-text2'}`}>
+          <div className="flex flex-wrap gap-1.5">
+            {selectedPlatforms.map(pk => {
+              const meta = PLATS[pk]
+              if (!meta) return null
+              return (
+                <span
+                  key={pk}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-acb bg-acl text-[12px] font-medium text-accent"
+                >
+                  <span className="text-[13px]">{meta.icon}</span>
                   {meta.name}
                 </span>
-                <span
-                  className={`w-[15px] h-[15px] rounded flex items-center justify-center text-[8px] flex-shrink-0 transition-all ${
-                    platforms[key]
-                      ? 'bg-accent border-accent text-white border-[1.5px]'
-                      : 'border-[1.5px] border-border2 text-transparent'
-                  }`}
-                >
-                  ✓
-                </span>
-              </label>
-            ))}
+              )
+            })}
+            {selectedPlatforms.length === 0 && (
+              <span className="text-[12px] text-text3">No platforms enabled — configure in the Configure tab</span>
+            )}
           </div>
         </div>
 
@@ -371,6 +371,17 @@ export default function RepurposeTab() {
                 </div>
               )
             })}
+          </div>
+        )}
+
+        {hasResults && (
+          <div className="mt-6 flex justify-end">
+            <button
+              onClick={onNavigateToPublish}
+              className="px-5 py-2.5 rounded-[9px] bg-text text-bg font-semibold text-[13.5px] transition-all hover:bg-[#2a2926] hover:-translate-y-px hover:shadow-md"
+            >
+              Publish content →
+            </button>
           </div>
         )}
       </div>

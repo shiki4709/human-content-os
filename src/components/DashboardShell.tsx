@@ -264,7 +264,15 @@ export default function DashboardShell({
           />
         </div>
         <div className={activeTab === 'repurpose' ? 'flex flex-col h-full' : 'hidden'}>
-          <RepurposeTab />
+          <RepurposeTab
+            brandVoice={brandVoice}
+            tone={tone}
+            enabledPlatforms={enabledPlatforms}
+            onGeneratedContentChange={(content) => {
+              handleGenerationComplete(content, '')
+            }}
+            onNavigateToPublish={() => setActiveTab('publish')}
+          />
         </div>
         <div className={activeTab === 'configure' ? 'flex flex-row h-full' : 'hidden'}>
           <ConfigureTab
