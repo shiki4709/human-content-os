@@ -1,9 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 const PROMPTS: Record<string, (p: Record<string, string>) => string> = {
-  url: (p) => `Fetch this URL and extract the full key content as if you loaded the page: ${p.url}
+  url: (p) => {
+    if (p.hint === 'substack-newsletter') {
+      return `Fetch this Substack newsletter and extract the FULL article content: ${p.url}
 
-Return a rich summary with headline, main arguments, key data points, and quotes. 300-600 words.`,
+This is a newsletter that will be repurposed into social media posts. Extract:
+- The main thesis/argument
+- All key points and insights (preserve the author's original framing)
+- Notable quotes or data points
+- The narrative arc and structure
+
+Return the complete content — do NOT summarize or shorten. 500-1500 words. Preserve the author's voice.`
+    }
+    return `Fetch this URL and extract the full key content as if you loaded the page: ${p.url}
+
+Return a rich summary with headline, main arguments, key data points, and quotes. 300-600 words.`
+  },
 
   search: (p) => `You are searching the web. Query: "${p.query}" — Time range: ${p.period}.
 

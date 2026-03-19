@@ -45,6 +45,11 @@ function isUrl(str: string): boolean {
   return /^https?:\/\//i.test(str.trim())
 }
 
+function isSubstackUrl(str: string): boolean {
+  return /^https?:\/\/[^/]*\.substack\.com\//i.test(str.trim()) ||
+         /^https?:\/\/[^/]*\/p\//i.test(str.trim()) && /substack/i.test(str)
+}
+
 type Props = {
   brandVoice: string
   tone: string
@@ -91,7 +96,10 @@ export default function RepurposeTab({
         const res = await fetch('/api/sources', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ type: 'url', extra: { url: trimmed } }),
+          body: JSON.stringify({
+            type: 'url',
+            extra: { url: trimmed, hint: isSubstackUrl(trimmed) ? 'substack-newsletter' : undefined },
+          }),
         })
         const data = await res.json()
         if (data.error) {
@@ -228,6 +236,13 @@ export default function RepurposeTab({
             placeholder="Paste a URL (https://...) or text content to repurpose..."
             className="w-full font-sans text-[13.5px] text-text bg-bg border border-border rounded-lg px-4 py-3 outline-none resize-none leading-relaxed transition-colors focus:border-accent placeholder:text-text3"
           />
+          {isSubstackUrl(input) && (
+            <div className="flex items-center gap-2 mt-2 px-3 py-2 rounded-lg bg-[#fff7ed] border border-[#ff6719]/20">
+              <span className="text-[13px]">📧</span>
+              <span className="text-[12px] font-medium text-[#c2410c]">Newsletter detected</span>
+              <span className="text-[11px] text-[#c2410c]/70">— optimized extraction for Substack articles</span>
+            </div>
+          )}
         </div>
 
         {/* Platform summary */}
@@ -272,7 +287,7 @@ export default function RepurposeTab({
               Repurposing…
             </>
           ) : (
-            <>✦ {isUrl(input.trim()) ? 'Fetch & Repurpose' : 'Repurpose'}</>
+            <>✦ {isSubstackUrl(input.trim()) ? 'Repurpose newsletter' : isUrl(input.trim()) ? 'Fetch & Repurpose' : 'Repurpose'}</>
           )}
         </button>
 
