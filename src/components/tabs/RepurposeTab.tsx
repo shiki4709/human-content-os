@@ -157,7 +157,9 @@ export default function RepurposeTab({
 
   function handleContentEdit(pk: string) {
     const content = getEditedContent(pk)
-    setResults(prev => ({ ...prev, [pk]: content }))
+    const updated = { ...results, [pk]: content }
+    setResults(updated)
+    onGeneratedContentChange(updated)
   }
 
   async function handlePublish(pk: string) {
