@@ -1,33 +1,70 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-// Fetch actual page content and strip HTML to plain text
-async function fetchPageContent(url: string): Promise<string> {
-  const res = await fetch(url, {
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (compatible; HumanContentOS/1.0)',
-      'Accept': 'text/html,application/xhtml+xml',
-    },
-    redirect: 'follow',
-  })
-  if (!res.ok) throw new Error(`HTTP ${res.status}`)
-  const html = await res.text()
-
-  // Strip HTML tags, scripts, styles — keep text content
-  const cleaned = html
+// Strip HTML to clean text
+function htmlToText(html: string): string {
+  return html
     .replace(/<script[\s\S]*?<\/script>/gi, '')
     .replace(/<style[\s\S]*?<\/style>/gi, '')
     .replace(/<nav[\s\S]*?<\/nav>/gi, '')
     .replace(/<footer[\s\S]*?<\/footer>/gi, '')
     .replace(/<header[\s\S]*?<\/header>/gi, '')
+    .replace(/@font-face\{[^}]*\}/g, '')
+    .replace(/@layer[^{]*\{[^}]*\}/g, '')
     .replace(/<[^>]+>/g, ' ')
     .replace(/&nbsp;/g, ' ')
     .replace(/&amp;/g, '&')
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
     .replace(/&quot;/g, '"')
+    .replace(/&#x27;/g, "'")
     .replace(/&#39;/g, "'")
     .replace(/\s+/g, ' ')
     .trim()
+}
+
+// Fetch actual page content — tries Substack API first for newsletters
+async function fetchPageContent(url: string, isSubstack: boolean): Promise<string> {
+  // Substack exposes clean HTML via their embed/reader endpoint
+  if (isSubstack) {
+    try {
+      // Extract slug from URL like /p/my-post-title
+      const slugMatch = url.match(/\/p\/([^/?#]+)/)
+      // Extract publication subdomain or custom domain
+      const domainMatch = url.match(/https?:\/\/([^/]+)/)
+      if (slugMatch && domainMatch) {
+        const domain = domainMatch[1]
+        const slug = slugMatch[1]
+        const apiUrl = `https://${domain}/api/v1/posts/${slug}`
+        const apiRes = await fetch(apiUrl, {
+          headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36' },
+        })
+        if (apiRes.ok) {
+          const post = await apiRes.json()
+          // body_html has the full article content
+          if (post.body_html) {
+            const text = htmlToText(post.body_html)
+            if (text.length > 200) {
+              return text.slice(0, 20000)
+            }
+          }
+        }
+      }
+    } catch {
+      // Fall through to regular fetch
+    }
+  }
+
+  // Regular fetch for non-Substack or as fallback
+  const res = await fetch(url, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+      'Accept': 'text/html,application/xhtml+xml',
+    },
+    redirect: 'follow',
+  })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  const html = await res.text()
+  const cleaned = htmlToText(html)
 
   // Limit to ~15k chars to stay within Claude's sweet spot
   return cleaned.slice(0, 15000)
@@ -118,7 +155,7 @@ export async function POST(request: NextRequest) {
   // For URL types, fetch actual page content first
   if (type === 'url' && extra.url) {
     try {
-      const pageContent = await fetchPageContent(extra.url)
+      const pageContent = await fetchPageContent(extra.url, extra.hint === 'substack-newsletter')
       extra.pageContent = pageContent
     } catch (err) {
       return NextResponse.json({
