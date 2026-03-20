@@ -1,21 +1,62 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+// Fetch actual page content and strip HTML to plain text
+async function fetchPageContent(url: string): Promise<string> {
+  const res = await fetch(url, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (compatible; HumanContentOS/1.0)',
+      'Accept': 'text/html,application/xhtml+xml',
+    },
+    redirect: 'follow',
+  })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  const html = await res.text()
+
+  // Strip HTML tags, scripts, styles — keep text content
+  const cleaned = html
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/<style[\s\S]*?<\/style>/gi, '')
+    .replace(/<nav[\s\S]*?<\/nav>/gi, '')
+    .replace(/<footer[\s\S]*?<\/footer>/gi, '')
+    .replace(/<header[\s\S]*?<\/header>/gi, '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\s+/g, ' ')
+    .trim()
+
+  // Limit to ~15k chars to stay within Claude's sweet spot
+  return cleaned.slice(0, 15000)
+}
+
 const PROMPTS: Record<string, (p: Record<string, string>) => string> = {
   url: (p) => {
     if (p.hint === 'substack-newsletter') {
-      return `Fetch this Substack newsletter and extract the FULL article content: ${p.url}
+      return `Here is the raw text content extracted from a Substack newsletter (${p.url}):
 
-This is a newsletter that will be repurposed into social media posts. Extract:
+---
+${p.pageContent}
+---
+
+This newsletter will be repurposed into social media posts. Extract the FULL article content:
 - The main thesis/argument
 - All key points and insights (preserve the author's original framing)
 - Notable quotes or data points
 - The narrative arc and structure
 
-Return the complete content — do NOT summarize or shorten. 500-1500 words. Preserve the author's voice.`
+Return the complete article content — do NOT summarize or shorten. Preserve the author's voice and key phrases. Strip out navigation, footer, and subscription prompts.`
     }
-    return `Fetch this URL and extract the full key content as if you loaded the page: ${p.url}
+    return `Here is the raw text content extracted from a web page (${p.url}):
 
-Return a rich summary with headline, main arguments, key data points, and quotes. 300-600 words.`
+---
+${p.pageContent}
+---
+
+Extract the key content: headline, main arguments, key data points, and quotes. 300-600 words.`
   },
 
   search: (p) => `You are searching the web. Query: "${p.query}" — Time range: ${p.period}.
@@ -74,6 +115,20 @@ export async function POST(request: NextRequest) {
     })
   }
 
+  // For URL types, fetch actual page content first
+  if (type === 'url' && extra.url) {
+    try {
+      const pageContent = await fetchPageContent(extra.url)
+      extra.pageContent = pageContent
+    } catch (err) {
+      return NextResponse.json({
+        content: `(Could not fetch ${extra.url} — ${err instanceof Error ? err.message : 'unknown error'}. Try pasting the content directly as notes instead.)`,
+        label: getAutoLabel(type, extra),
+      })
+    }
+  }
+
+  const isNewsletter = extra.hint === 'substack-newsletter'
   const prompt = promptFn(extra)
 
   try {
@@ -86,7 +141,7 @@ export async function POST(request: NextRequest) {
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-5-20250929',
-        max_tokens: 1000,
+        max_tokens: isNewsletter ? 3000 : 1500,
         system: 'You are a content extraction agent. Return ONLY the extracted/simulated content — no preamble, no explanation, no meta-commentary. Just the raw content.',
         messages: [{ role: 'user', content: prompt }],
       }),
