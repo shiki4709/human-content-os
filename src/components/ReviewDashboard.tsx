@@ -230,10 +230,10 @@ export default function ReviewDashboard() {
             }}
           >
             <p style={{ fontSize: '1rem', marginBottom: '0.5rem', color: 'var(--text2)' }}>
-              No content yet.
+              No content yet
             </p>
             <p style={{ fontSize: '0.875rem' }}>
-              Publish a Substack post and it will appear here automatically.
+              Paste any article or post link above to get started.
             </p>
           </div>
         ) : (

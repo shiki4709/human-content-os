@@ -47,7 +47,7 @@ async function callClaude(systemPrompt: string, userPrompt: string): Promise<str
 export async function generateForPlatform(
   sourceContent: string,
   sourceTitle: string,
-  platform: 'linkedin' | 'x',
+  platform: string,
   baseVoice?: string
 ): Promise<string> {
   const platformPrompt = PLATFORM_PROMPTS[platform]
@@ -76,7 +76,7 @@ Write the ${platform} content now.`
 export async function generateAllPlatforms(
   sourceContent: string,
   sourceTitle: string,
-  platforms: ('linkedin' | 'x')[],
+  platforms: readonly string[],
   baseVoice?: string
 ): Promise<Record<string, string>> {
   const results = await Promise.all(
