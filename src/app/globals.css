@@ -2,6 +2,17 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --bg: #ffffff;
+  --bg2: #f8f7f5;
+  --bg3: #f0ede8;
+  --text: #1c1b18;
+  --text2: #5c5a54;
+  --text3: #9e9b93;
+  --border: #e5e2db;
+  --accent: #1c1b18;
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -10,8 +21,8 @@
 
 body {
   font-family: 'DM Sans', sans-serif;
-  background: #fff;
-  color: #1c1b18;
+  background: var(--bg);
+  color: var(--text);
   -webkit-font-smoothing: antialiased;
   font-size: 14px;
 }
