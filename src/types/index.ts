@@ -8,16 +8,24 @@ export interface Source {
   content: string
   meta: Record<string, unknown> | null
   selected: boolean
+  rss_guid: string | null
+  rss_published_at: string | null
   created_at: string
 }
+
+// Content lifecycle statuses
+export type ContentStatus = 'generating' | 'pending_review' | 'editing' | 'approved' | 'published' | 'skipped' | 'failed'
 
 export interface GeneratedContent {
   id: string
   user_id: string
   platform: string
   content: string
-  status: 'draft' | 'published'
+  status: ContentStatus
+  source_id: string | null
+  error_message: string | null
   created_at: string
+  updated_at: string
 }
 
 export interface PublishEntry {
@@ -38,6 +46,18 @@ export interface PlatformConnection {
   connected: boolean
   expired: boolean
   name?: string
+}
+
+// User settings
+export interface UserSettings {
+  id: string
+  user_id: string
+  substack_rss_url: string | null
+  base_voice: string | null
+  onboarding_complete: boolean
+  rss_fail_count: number
+  created_at: string
+  updated_at: string
 }
 
 export const BADGE_STYLES: Record<string, { bg: string; text: string; icon: string; label: string }> = {
