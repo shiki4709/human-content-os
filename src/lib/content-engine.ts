@@ -109,18 +109,22 @@ export interface AnalysisResult {
 
 const ANALYSIS_PROMPT = `You are a content strategist who breaks down articles into repurposable content angles.
 
-Analyze the article and identify EVERY distinct piece of content that could be turned into a standalone social media post. Each angle should be different enough to be its own post.
+CRITICAL RULE: You may ONLY identify angles that are explicitly present in the article text. Do NOT invent, infer, or embellish. Every angle must be directly traceable to specific sentences or paragraphs in the source article. If the article only has 2 strong angles, return 2 — do not pad with made-up angles.
+
+Analyze the article and identify distinct pieces of content that could be turned into standalone social media posts.
 
 Types of angles to look for:
-- key_insight: A core takeaway or lesson (works on LinkedIn + X)
-- story: A personal anecdote or narrative arc (works best on LinkedIn)
-- data_point: A surprising statistic or number (works on X + LinkedIn)
-- framework: A mental model, system, or step-by-step process (works on X threads)
-- contrarian_take: An opinion that challenges conventional wisdom (works on X + LinkedIn)
-- how_to: Actionable advice or tutorial content (works on X threads)
-- quote: A memorable one-liner or insight (works as standalone X tweet)
+- key_insight: A core takeaway or lesson explicitly stated in the article (works on LinkedIn + X)
+- story: A personal anecdote or narrative arc the author actually tells (works best on LinkedIn)
+- data_point: A specific statistic, number, or metric mentioned in the article (works on X + LinkedIn)
+- framework: A mental model, system, or step-by-step process the author describes (works on X threads)
+- contrarian_take: An opinion the author explicitly argues against conventional wisdom (works on X + LinkedIn)
+- how_to: Actionable advice or steps the author actually provides (works on X threads)
+- quote: A memorable sentence or phrase the author actually wrote (works as standalone X tweet)
 
 For each angle, specify which platforms it works best on: "linkedin", "x", or both.
+
+In each summary, reference the specific fact, quote, or detail from the article that this angle is based on.
 
 Respond in this exact JSON format (no markdown, no code fences):
 {
@@ -130,13 +134,13 @@ Respond in this exact JSON format (no markdown, no code fences):
       "id": "1",
       "type": "key_insight",
       "title": "Short title for this angle (max 10 words)",
-      "summary": "2-3 sentences describing what this specific content piece would cover",
+      "summary": "2-3 sentences describing what this content piece would cover. Must reference specific details from the article.",
       "platforms": ["linkedin", "x"]
     }
   ]
 }
 
-Find at least 3 angles. Find up to 8 if the article is rich enough. Don't force angles that aren't there — quality over quantity.`
+Only return angles that are DIRECTLY supported by the article text. Quality over quantity.`
 
 export async function analyzeArticle(
   sourceContent: string,
@@ -181,6 +185,15 @@ export async function generateForAngle(
 
   const systemPrompt = `You are a world-class content strategist who creates platform-native content.${voiceInstruction}
 
+GROUNDING RULES (non-negotiable):
+- Every claim, number, statistic, and insight MUST come directly from the source article below.
+- Do NOT invent statistics, quotes, or facts that are not in the source.
+- Do NOT add examples, case studies, or anecdotes that the author did not include.
+- Do NOT attribute opinions or experiences to the author that they did not express.
+- If the source says "many companies" do NOT change it to "73% of companies" — keep it vague if the source is vague.
+- You may rephrase and restructure for the platform format, but the underlying facts must be identical to the source.
+- If a number appears in the source, use the EXACT number. Do not round, estimate, or embellish.
+
 ${platformPrompt}
 
 Output ONLY the platform content — no preamble, no labels, no extra explanation.`
@@ -192,10 +205,10 @@ Type: ${angle.type}
 Focus: ${angle.title}
 Brief: ${angle.summary}
 
-Source article (use this as raw material, but focus on the specific angle above):
+Source article — ALL facts, numbers, and insights must come from this text:
 ${sourceContent}
 
-Write the ${platform} content focused specifically on this angle.`
+Write the ${platform} content focused on this angle. Use ONLY information from the source article above.`
 
   return callClaude(systemPrompt, userPrompt)
 }
@@ -215,16 +228,24 @@ export async function generateForPlatform(
 
   const systemPrompt = `You are a world-class content strategist who creates platform-native content.${voiceInstruction}
 
+GROUNDING RULES (non-negotiable):
+- Every claim, number, statistic, and insight MUST come directly from the source article below.
+- Do NOT invent statistics, quotes, or facts that are not in the source.
+- Do NOT add examples, case studies, or anecdotes that the author did not include.
+- Do NOT attribute opinions or experiences to the author that they did not express.
+- If the source says "many companies" do NOT change it to "73% of companies".
+- You may rephrase and restructure for the platform format, but the facts must be identical to the source.
+
 ${platformPrompt}
 
 Output ONLY the platform content — no preamble, no labels, no extra explanation.`
 
   const userPrompt = `Source title: ${sourceTitle}
 
-Source content:
+Source article — ALL facts, numbers, and insights must come from this text:
 ${sourceContent}
 
-Write the ${platform} content now.`
+Write the ${platform} content now. Use ONLY information from the source article above.`
 
   return callClaude(systemPrompt, userPrompt)
 }
