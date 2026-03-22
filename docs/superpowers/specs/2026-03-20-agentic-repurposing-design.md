@@ -176,11 +176,10 @@ First-time user experience (replaces the old Configure tab):
 
 1. Sign up / login (Supabase auth — existing)
 2. "What's your Substack URL?" → enter URL, Human validates RSS feed exists
-3. "Describe your writing voice" (required) → text input describing expertise + style, or paste 2-3 example posts (Claude distills into voice description). This is the base layer — platform-specific tone is applied automatically with smart defaults. User cannot skip this step. Default fallback if somehow empty: "Professional, clear, conversational."
-4. "Connect your platforms" → LinkedIn OAuth + X OAuth (existing OAuth flows)
-5. "You're set! We're watching your Substack. When you publish, your content will appear here ready to review."
+3. "Connect your platforms" → LinkedIn OAuth + X OAuth (existing OAuth flows)
+4. "You're set! We're watching your Substack. When you publish, your content will appear here ready to review."
 
-Brand voice and platform connections are editable later via Settings.
+No voice configuration needed. Platform-optimized tones are built into each platform's prompt. Tone overrides and optional base voice description are available in Settings for power users.
 
 ### Content Engine
 
@@ -193,9 +192,9 @@ Brand voice and platform connections are editable later via Settings.
 
 **Two-layer voice system:**
 
-1. **Base voice (user-defined):** The user's general writing identity — their expertise, personality, and style. Set during onboarding ("I write about AI and startups, direct and conversational"). Stored in user profile.
+1. **Platform tone (smart defaults, primary):** Built-in knowledge of what tone performs well on each platform. Applied automatically. This is the main voice system — users don't configure it.
 
-2. **Platform tone (smart defaults):** Built-in knowledge of what tone performs well on each platform. Applied automatically on top of the base voice. User can override per platform in Settings.
+2. **Base voice (optional, power user):** An optional general voice description available in Settings. If set, it's layered underneath the platform tone as additional context (e.g., "I write about AI and startups"). Most users won't need this — the platform tones + the source content itself are enough.
 
 | Platform | Default tone | Why |
 |----------|-------------|-----|
@@ -204,9 +203,11 @@ Brand voice and platform connections are editable later via Settings.
 | **Rednote** (P1) | Casual 生活化, emoji-rich, list format, personal story, local references | Xiaohongshu culture rewards relatability and visual formatting |
 | **note.com** (P1) | Formal but warm, structured headers, thorough, Japanese sensibility | Japanese readers expect completeness and respectful tone |
 
-**How it works in the prompt:** The Claude system prompt combines both layers: "You are writing as [base voice]. For this platform, use [platform tone rules]. Generate a [platform]-native post from the following article."
+**How it works in the prompt:** The Claude system prompt uses the platform tone as the primary instruction: "Generate a [platform]-native post using these tone rules: [platform tone]. Source article: [content]." If the user has set a base voice in Settings, it's prepended: "The author's general voice: [base voice]."
 
-**Settings override:** In the Settings page, each platform has an optional "Tone override" field. If set, it replaces the default tone for that platform. Example: user might override X default to "more educational than provocative" if that matches their brand.
+**Settings (optional, power user):**
+- Base voice description (optional text field)
+- Per-platform tone override (optional — replaces the default tone for that platform)
 
 **Rednote cultural adaptation (P1) — concrete examples:**
 - Direct translation: "This AI tool saves you 10 hours per week" → BAD
