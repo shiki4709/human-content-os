@@ -176,7 +176,7 @@ First-time user experience (replaces the old Configure tab):
 
 1. Sign up / login (Supabase auth — existing)
 2. "What's your Substack URL?" → enter URL, Human validates RSS feed exists
-3. "Describe your writing voice" (required) → text input or paste examples (Claude distills into voice description). User cannot skip this step — brand voice is injected into every prompt. Default fallback if somehow empty: "Professional, clear, conversational."
+3. "Describe your writing voice" (required) → text input describing expertise + style, or paste 2-3 example posts (Claude distills into voice description). This is the base layer — platform-specific tone is applied automatically with smart defaults. User cannot skip this step. Default fallback if somehow empty: "Professional, clear, conversational."
 4. "Connect your platforms" → LinkedIn OAuth + X OAuth (existing OAuth flows)
 5. "You're set! We're watching your Substack. When you publish, your content will appear here ready to review."
 
@@ -191,7 +191,22 @@ Brand voice and platform connections are editable later via Settings.
 - **Rednote (P1):** 小红书笔记. 中文. 生活化语气. emoji适量. Cover hook + 2-3 content points + CTA. 200-400字. 文化本土化，不要直译.
 - **note.com (P1):** Japanese long-form. Cultural adaptation for Japanese audience. Formal but approachable tone. Include section headers.
 
-**Brand voice:** Injected into every generation prompt as a system-level instruction. Stored as a text description in the user profile. If the user pastes example posts instead of a description, Claude distills them into a 1-2 sentence voice description which is then stored.
+**Two-layer voice system:**
+
+1. **Base voice (user-defined):** The user's general writing identity — their expertise, personality, and style. Set during onboarding ("I write about AI and startups, direct and conversational"). Stored in user profile.
+
+2. **Platform tone (smart defaults):** Built-in knowledge of what tone performs well on each platform. Applied automatically on top of the base voice. User can override per platform in Settings.
+
+| Platform | Default tone | Why |
+|----------|-------------|-----|
+| **X** | Punchy, provocative hooks, short sentences, hot takes, thread-native structure | Short-form virality rewards boldness and speed |
+| **LinkedIn** | Professional but personal, story-driven, insight-first, hook in line 1 | Algorithm rewards dwell time and comments on thoughtful posts |
+| **Rednote** (P1) | Casual 生活化, emoji-rich, list format, personal story, local references | Xiaohongshu culture rewards relatability and visual formatting |
+| **note.com** (P1) | Formal but warm, structured headers, thorough, Japanese sensibility | Japanese readers expect completeness and respectful tone |
+
+**How it works in the prompt:** The Claude system prompt combines both layers: "You are writing as [base voice]. For this platform, use [platform tone rules]. Generate a [platform]-native post from the following article."
+
+**Settings override:** In the Settings page, each platform has an optional "Tone override" field. If set, it replaces the default tone for that platform. Example: user might override X default to "more educational than provocative" if that matches their brand.
 
 **Rednote cultural adaptation (P1) — concrete examples:**
 - Direct translation: "This AI tool saves you 10 hours per week" → BAD
