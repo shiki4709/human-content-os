@@ -1,59 +1,62 @@
-# Design: Human Content OS — Agentic Repurposing Agent
+# Design: Human Content OS — Auto-Repurposing Dashboard
 
 **Date:** 2026-03-20
 **Status:** DRAFT
 
 ## Problem Statement
 
-Human Content OS is a content repurposing tool with a web dashboard that the founder built but doesn't use. The dashboard requires manual effort: open the app, add sources, configure, generate, review, publish. The founder actually wants an agent that automatically distributes content across platforms — push-based, not pull-based.
+Human Content OS has a web dashboard with a 4-tab manual workflow (Sources → Configure → Generate → Publish). The founder built it but doesn't use it because each step requires manual effort. The content generation logic (Claude prompts, platform formatting, OAuth) is solid — the problem is that the workflow is too manual.
 
-The existing codebase has solid content generation logic (Claude prompts, platform-specific formatting, OAuth integrations) but the wrong interaction model.
+The fix: make the dashboard automatic. Human watches your Substack, auto-generates platform-native content, and presents it in the dashboard ready to review and publish. No manual sourcing, no manual generation. You open the dashboard and your repurposed content is already there.
 
-## Decision: Standalone Agent, Not Pingi Module
+## Decision: Standalone Product, Not Pingi Module
 
-Human was considered for merging into Pingi (the founder's X engagement agent) but remains standalone because:
+Human stays separate from Pingi (the founder's X engagement agent) because:
 - Different job: Pingi = real-time engagement (conversations, replies). Human = content distribution (repurposing across platforms).
 - Different cadence: Pingi is all-day ambient engagement. Human triggers on publish events (1-2x/week).
-- The cross-border localization angle (English → Rednote Chinese, note.com Japanese) is Human's unique differentiator and would get buried inside Pingi.
+- The cross-border localization angle (English → Rednote Chinese, note.com Japanese) is Human's unique differentiator.
 
 ## Product Identity
 
 **One-liner:** Post once, reach everywhere — Human auto-repurposes your content across platforms and languages.
 
-**Wedge:** Agentic, Telegram-first content distribution. No dashboard. Push-based approval.
-
 **Differentiators vs. competitors (Repurpose.io, Castmagic, Munch):**
-1. Agentic — pushes to Telegram, not a dashboard you visit
-2. Cross-border localization (P1) — English → Chinese (Rednote), Japanese (note.com), culturally adapted
-3. Platform-native formatting — not just pasting text, but format-specific output (X threads, Rednote carousels, LinkedIn long-form)
+1. Auto-detect + auto-generate — no manual "add source" or "click generate" steps
+2. Cross-border localization (P1) — English → Chinese (Rednote), Japanese (note.com), culturally adapted, not just translated
+3. Platform-native formatting — X threads, Rednote carousels, LinkedIn long-form, note.com articles
 
 ## Core Flow
 
-1. User publishes content somewhere (Substack article, initially)
-2. Human detects it (RSS poll every 15 min, or manual `/repurpose [url]` command in Telegram)
-3. Content engine (Claude) generates platform-native versions for each target platform, using the user's brand voice
-4. Human pushes generated content to Telegram with Send / Edit / Skip buttons per platform
-5. User reviews and approves with one tap — Human publishes via platform APIs
+```
+1. You publish a Substack article
+2. Human detects it via RSS (~15 min)
+3. Human auto-generates LinkedIn post + X thread using your brand voice
+4. You open the Human dashboard on your laptop
+5. Your repurposed content is already there, ready to review
+6. Edit inline if needed → one-click publish per platform
+```
+
+**Key difference from current dashboard:** No Sources tab, no Configure tab, no Generate button. Content appears automatically. The dashboard is a review + publish screen.
 
 ## Source & Target Matrix
 
 ### P0 (Launch)
 
 **Source:**
-- Substack — RSS feed polling every 15 minutes
+- Substack — RSS feed polling every 15 minutes, auto-detected
 
 **Targets:**
 - LinkedIn — professional long-form post, English, published via LinkedIn API v2
 - X/Twitter — thread format (4-8 tweets, 280 char each, split on `---`), published via X API v2
 
 **Manual trigger:**
-- Telegram `/repurpose [url]` command — paste any Substack URL (P0) or any URL (P1), Human fetches content and generates for all enabled targets
+- "Repurpose URL" input on dashboard — paste any Substack URL (P0) or any URL (P1), Human fetches and generates
 
 ### P1 (After P0 validated)
 
 **Additional targets:**
-- Rednote 小红书 — Chinese, culturally adapted (not translated), carousel images (cover + 2-3 content slides + CTA). No API; copy text to clipboard + download carousel images.
-- note.com — Japanese, culturally adapted long-form. Publish via note.com API if available, otherwise copy to clipboard.
+- Rednote 小红书 — Chinese, culturally adapted, carousel images (cover + 2-3 content slides + CTA). No API; copy text + download images.
+- note.com — Japanese, culturally adapted long-form. Publish via note.com API if available, otherwise copy.
 
 ### P2 (Future)
 
@@ -68,101 +71,116 @@ Human was considered for merging into Pingi (the founder's X engagement agent) b
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────┐
-│              Human Agent (Node.js)           │
-├─────────────────────────────────────────────┤
-│  Source Watcher                              │
-│  ├── SubstackWatcher (RSS poll, 15 min)     │
-│  ├── Dedup (track processed post GUIDs)     │
-│  └── ManualInput (Telegram /repurpose cmd)  │
-├─────────────────────────────────────────────┤
-│  Content Engine                              │
-│  ├── Claude API (claude-sonnet-4-5)          │
-│  ├── Platform prompts (LinkedIn, X, etc.)   │
-│  ├── Brand voice injection                  │
-│  └── Localization layer (P1: CN, JP)        │
-├─────────────────────────────────────────────┤
-│  Publisher                                   │
-│  ├── LinkedInPublisher (API v2 post)        │
-│  ├── XPublisher (API v2 thread)             │
-│  ├── RednotePublisher (copy + images) [P1]  │
-│  └── NoteComPublisher (API or copy) [P1]    │
-├─────────────────────────────────────────────┤
-│  Telegram Bot                                │
-│  ├── /start — onboarding flow               │
-│  ├── /repurpose [url] — manual trigger      │
-│  ├── /voice — view/update brand voice       │
-│  ├── Push content cards with Send/Edit/Skip │
-│  └── Edit flow (user types instruction)     │
-├─────────────────────────────────────────────┤
-│  Data (Supabase)                             │
-│  ├── users + auth                           │
-│  ├── sources (detected content)             │
-│  ├── generated_content (per platform)       │
-│  ├── publish_log (status tracking)          │
-│  └── platform_connections (OAuth tokens)    │
-└─────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────┐
+│              Human Content OS                    │
+├─────────────────────────────────────────────────┤
+│  Background Worker (Node.js)                     │
+│  ├── SubstackWatcher (RSS poll, 15 min)         │
+│  ├── Dedup (track processed post GUIDs)         │
+│  └── Auto-generate on new post detected         │
+├─────────────────────────────────────────────────┤
+│  Content Engine                                  │
+│  ├── Claude API (claude-sonnet-4-5)             │
+│  ├── Platform prompts (LinkedIn, X, etc.)       │
+│  ├── Brand voice injection                      │
+│  └── Localization layer (P1: CN, JP)            │
+├─────────────────────────────────────────────────┤
+│  Publisher                                       │
+│  ├── LinkedInPublisher (API v2 post)            │
+│  ├── XPublisher (API v2 thread)                 │
+│  ├── RednotePublisher (copy + images) [P1]      │
+│  └── NoteComPublisher (API or copy) [P1]        │
+├─────────────────────────────────────────────────┤
+│  Next.js Web App (existing, simplified)          │
+│  ├── Landing page                               │
+│  ├── Auth (Supabase)                            │
+│  ├── Onboarding (RSS URL + brand voice + OAuth) │
+│  ├── Review dashboard (auto-populated content)  │
+│  └── Publish controls (one-click per platform)  │
+├─────────────────────────────────────────────────┤
+│  Data (Supabase)                                 │
+│  ├── users + auth                               │
+│  ├── sources (detected content + RSS GUIDs)     │
+│  ├── generated_content (per platform)           │
+│  ├── publish_log (status tracking)              │
+│  └── platform_connections (OAuth tokens)        │
+└─────────────────────────────────────────────────┘
 ```
 
-### Telegram Bot Interface
+### Background Worker
 
-The Telegram bot is the only user-facing interface. No web dashboard for content operations.
+A separate Node.js process (or Next.js cron/API route triggered by Vercel Cron) that:
+1. Polls the user's Substack RSS feed every 15 minutes
+2. Deduplicates by checking `sources` table for existing GUIDs
+3. On new post: fetches full content, calls Claude to generate per-platform versions, stores in `generated_content` with status `pending_review`
 
-**Onboarding (`/start`):**
-1. Welcome message explaining Human
-2. Provide Substack RSS URL (e.g., `https://yourname.substack.com/feed`)
-3. Set brand voice — user describes their writing style in 1-2 sentences, optionally pastes 2-3 example posts
-4. Connect LinkedIn via OAuth (bot sends auth URL, user completes in browser, callback confirms)
-5. Connect X via OAuth (same flow)
-6. Confirmation: "You're set! I'll watch your Substack and repurpose new posts to LinkedIn and X."
+**Implementation options for the worker:**
+- **Vercel Cron + API route:** Add a `/api/cron/poll-rss` endpoint, trigger via Vercel Cron every 15 min. Simplest, stays within existing Next.js infra. Limited to Vercel's cron constraints (max 60s execution on Hobby plan).
+- **Separate Node.js process:** Standalone script with `setInterval`. Deploy on Railway or Fly.io. More flexible, can run longer jobs. Same pattern as Pingi's bot server.
 
-**OAuth flow in Telegram context:**
-Bot generates an OAuth URL with a `state` param encoding the Telegram `chat_id` + a short-lived session token. User opens URL in browser, completes OAuth on LinkedIn/X. The callback endpoint (on the Fastify server, e.g., `/auth/callback/linkedin`) exchanges the auth code for tokens, stores them in `platform_connections` linked to the user via the `state` param, and sends a Telegram confirmation message: "LinkedIn connected!"
+**Recommendation:** Start with Vercel Cron but split into two steps:
+1. **Cron job (`/api/cron/poll-rss`):** Polls RSS, deduplicates, writes new `sources` rows with status `detected`. Fast — completes in <5s.
+2. **Generation job (`/api/cron/generate`):** Triggered by cron immediately after poll (or by DB insert webhook). Reads unprocessed sources, calls Claude in **parallel** for both LinkedIn and X (Promise.all), writes `generated_content` rows. This avoids the 60s constraint since each platform generation runs concurrently (~15-20s total instead of 30-40s sequential).
 
-**Telegram callback data format:**
-Inline keyboard buttons encode action + content ID: `send:{content_id}`, `edit:{content_id}`, `skip:{content_id}`, `review_all:{source_id}`, `send_all:{source_id}`. The callback handler parses the prefix to determine action, looks up the `generated_content` row by ID, and executes.
+If Vercel's 60s limit is still tight, migrate the generation job to a separate worker on Railway/Fly.io.
 
-**Content push flow:**
+### Simplified Dashboard
+
+The existing 4-tab dashboard (Sources → Configure → Generate → Publish) becomes a **single-screen review + publish dashboard:**
+
 ```
-Human Bot: "📝 New Substack post detected:
-'Why AI Agents Are the Future'
-
-I've created 2 versions:
-🔵 LinkedIn — Professional post (287 words)
-⬛ X — Thread (5 tweets)
-
-[Review All] [Send All] [Skip]"
-```
-
-User taps "Review All":
-```
-Human Bot: "🔵 LinkedIn version:
-
-The future of software isn't apps you open — it's
-agents that come to you...
-
-[Send] [Edit] [Skip]"
-```
-
-If Edit:
-```
-Human Bot: "How should I adjust it?"
-User: "Make it more personal, add a specific example"
-Human Bot: "Here's the updated version:
-[revised content]
-
-[Send] [Edit] [Skip]"
+┌──────────────────────────────────────────────────────┐
+│  Human Content OS                    [Settings] [+URL]│
+├──────────────────────────────────────────────────────┤
+│                                                       │
+│  📝 "Why AI Agents Are the Future"                   │
+│  Detected from Substack · 2 hours ago                │
+│                                                       │
+│  ┌─────────────────────┐  ┌─────────────────────┐   │
+│  │ 🔵 LinkedIn          │  │ ⬛ X Thread          │   │
+│  │                      │  │                      │   │
+│  │ The future of soft-  │  │ 1/5: Every app you   │   │
+│  │ ware isn't apps you  │  │ use today will be    │   │
+│  │ open — it's agents   │  │ replaced by an       │   │
+│  │ that come to you...  │  │ agent. Here's why 🧵 │   │
+│  │                      │  │                      │   │
+│  │ [Edit] [Publish]     │  │ [Edit] [Publish]     │   │
+│  └─────────────────────┘  └─────────────────────┘   │
+│                                                       │
+│  ─────────────────────────────────────────────────   │
+│                                                       │
+│  📝 "Building in Public: Month 3"                    │
+│  Detected from Substack · 3 days ago · Published ✓   │
+│                                                       │
+└──────────────────────────────────────────────────────┘
 ```
 
-After LinkedIn is handled, show X version in same flow.
+**Dashboard states per content card:**
+- **Ready to review** — content generated, awaiting user action
+- **Published** — posted to platform, shown with ✓ and timestamp
+- **Skipped** — user dismissed this one
 
-**Edit flow limits:** Unlimited edit rounds. If the user doesn't respond for 4 hours, the edit session expires and the content status reverts to `pending_review` — the user can tap "Review All" again later.
+**Inline editing:** Click "Edit" → text becomes editable in-place. Optional "Refine" bar below (reuse from existing prototype): "make it punchier", "add a hook", "shorter", etc. These send the content + instruction to Claude for revision.
 
-**Error handling:**
-- OAuth token expired: "Your LinkedIn connection expired. [Reconnect]"
-- API publish failure: "Couldn't post to X — [Retry] or [Copy to clipboard]"
-- RSS fetch failure: silent retry on next poll cycle; alert user if 3+ consecutive failures
-- Content generation failure (Claude API): retry once after 5 seconds; if still failing, notify user: "Couldn't generate content for '{title}' — [Retry]"
+**[+URL] button:** Manual trigger. Paste any URL, Human fetches and generates content for all platforms. Same as auto-detected content from there. **Dedup check:** before generating, checks `sources` table for existing entry with same URL/GUID. If found, shows the existing generated content instead of creating duplicates.
+
+**[Settings] page:**
+- Substack RSS URL
+- Brand voice (text description or paste examples → Claude distills)
+- Connected platforms (LinkedIn, X) with OAuth connect/disconnect
+- Platform toggles (which targets to generate for)
+
+### Onboarding Flow
+
+First-time user experience (replaces the old Configure tab):
+
+1. Sign up / login (Supabase auth — existing)
+2. "What's your Substack URL?" → enter URL, Human validates RSS feed exists
+3. "Describe your writing voice" (required) → text input or paste examples (Claude distills into voice description). User cannot skip this step — brand voice is injected into every prompt. Default fallback if somehow empty: "Professional, clear, conversational."
+4. "Connect your platforms" → LinkedIn OAuth + X OAuth (existing OAuth flows)
+5. "You're set! We're watching your Substack. When you publish, your content will appear here ready to review."
+
+Brand voice and platform connections are editable later via Settings.
 
 ### Content Engine
 
@@ -173,21 +191,7 @@ After LinkedIn is handled, show X version in same flow.
 - **Rednote (P1):** 小红书笔记. 中文. 生活化语气. emoji适量. Cover hook + 2-3 content points + CTA. 200-400字. 文化本土化，不要直译.
 - **note.com (P1):** Japanese long-form. Cultural adaptation for Japanese audience. Formal but approachable tone. Include section headers.
 
-**Brand voice:** Injected into every generation prompt as a system-level instruction. Stored as a text description in the user profile. Set during onboarding, editable via `/voice` command. If the user pastes example posts instead of a description, Claude distills them into a 1-2 sentence voice description which is then stored.
-
-**`/voice` command flow:**
-```
-User: /voice
-Bot: "Your current brand voice:
-'Conversational, direct, uses analogies from engineering to explain business concepts.'
-
-[Update] [Keep]"
-
-User taps Update:
-Bot: "Send me your new brand voice description (1-2 sentences), or paste 2-3 example posts and I'll figure out your voice."
-User: [pastes examples or writes description]
-Bot: "Brand voice updated! All future content will use this style."
-```
+**Brand voice:** Injected into every generation prompt as a system-level instruction. Stored as a text description in the user profile. If the user pastes example posts instead of a description, Claude distills them into a 1-2 sentence voice description which is then stored.
 
 **Rednote cultural adaptation (P1) — concrete examples:**
 - Direct translation: "This AI tool saves you 10 hours per week" → BAD
@@ -201,60 +205,66 @@ Bot: "Brand voice updated! All future content will use this style."
 | Component | Location | Reuse Strategy |
 |-----------|----------|---------------|
 | Claude prompt templates | `prototype.html` PROMPTS object | Port directly into content engine |
-| LinkedIn OAuth + publish | `web/src/app/api/publish/`, `web/src/lib/platforms/linkedin.ts` | Extract and adapt for bot context |
-| X OAuth + thread publish | `web/src/lib/platforms/x.ts` | Extract and adapt |
-| Supabase schema | `supabase-setup.sql` | Reuse tables: sources, generated_content, publish_log, platform_connections. **Migration needed:** `generated_content.status` expands from `draft/published` to the full lifecycle states defined above. |
-| Rednote canvas carousel | `prototype.html` canvas code | Port to server-side image generation (P1) |
-| Brand voice system | Configure tab logic | Simplify for Telegram onboarding |
+| LinkedIn OAuth + publish | `web/src/app/api/publish/`, `web/src/lib/platforms/linkedin.ts` | Keep as-is, already in Next.js |
+| X OAuth + thread publish | `web/src/lib/platforms/x.ts` | Keep as-is |
+| Supabase schema | `supabase-setup.sql` | Reuse tables. **Migration needed:** `generated_content.status` expands from `draft/published` to full lifecycle states. |
+| Rednote canvas carousel | `prototype.html` canvas code | Keep client-side for P0 dashboard. Port to server-side only if needed for P1 Telegram/API delivery. |
+| Brand voice system | Configure tab logic | Move to Settings page + onboarding |
+| Inline editing + refine bar | Generate tab UI | Move to review dashboard cards |
+| Platform editor UI | `components/generate/` | Adapt for review dashboard layout |
+| Next.js app shell | `web/` | Keep, simplify routing |
 
 ### What Gets Built New
 
 | Component | Description |
 |-----------|-------------|
-| Telegram bot | Fastify server + fetch-based Telegram Bot API client (webhook mode for prod, long-polling for dev). Conversation state stored in Supabase `chat_sessions` table. Pattern reference: `pingi-ai/bot/src/index.ts` and `pingi-ai/bot/src/telegram.ts` |
-| Substack RSS watcher | Poll RSS feed every 15 min, detect new posts, extract full content |
-| Push + approval flow | Telegram message formatting with inline keyboards |
-| Edit flow | Conversational edit loop: track `editing` state per chat in Supabase, accept free-text instruction, call Claude to revise, re-show buttons. Reference: `pingi-ai/bot/src/handlers.ts` edit flow |
-| Onboarding via Telegram | Step-by-step setup: RSS URL, brand voice, OAuth connections |
+| RSS watcher | Vercel Cron job (or standalone worker) polling Substack RSS every 15 min |
+| Auto-generation pipeline | On new RSS item: fetch content → call Claude per platform → store results |
+| Review dashboard | Single-screen view of all auto-generated content with publish controls |
+| Onboarding flow | 4-step first-time setup (RSS URL, brand voice, OAuth, confirmation) |
+| Settings page | Edit RSS URL, brand voice, platform connections |
 
-### Web App Changes
+### What Gets Removed
 
-The existing Next.js web app becomes a landing page + auth/billing only:
-- Keep: landing page, Supabase auth, Stripe billing (if added)
-- Remove (or mothball): Sources tab, Configure tab, Generate tab, Publish tab
-- Add: Telegram bot connect button (link to bot)
-
-## What the Existing Dashboard Becomes
-
-The current 4-tab dashboard (Sources → Configure → Generate → Publish) is replaced by the Telegram bot. The web app's role shrinks to:
-1. Marketing landing page
-2. Auth (signup/login)
-3. Billing (future)
-4. "Connect to Telegram" CTA that links to the bot
-
-No content operations happen in the web UI.
-
-## Multi-Tenancy
-
-P0 is single-user (founder only). The Substack RSS watcher runs as a single cron job polling one feed. If the product gains traction and needs multi-user support, the watcher will need to iterate over all users' feeds in a shared poll loop (or use a job queue like BullMQ). This is a P2 concern — don't over-engineer for it now.
+| Component | Reason |
+|-----------|--------|
+| Sources tab | Replaced by automatic RSS detection |
+| Configure tab | Replaced by Settings page + onboarding |
+| Generate tab "Generate" button | Generation is automatic, no manual trigger |
+| Manual source type forms (5 types) | Replaced by RSS auto-detect + manual URL input |
 
 ## Content Lifecycle States
 
 ```
 generated_content.status:
-  generating    → Claude is producing content
-  pending_review → pushed to Telegram, waiting for user action
-  editing       → user tapped Edit, awaiting revision instruction
-  approved      → user tapped Send, ready to publish
-  published     → successfully posted to platform
-  skipped       → user tapped Skip
-  (no expired state — on 4h timeout, status reverts to pending_review)
+  generating     → Claude is producing content
+  pending_review → ready for user to review in dashboard
+  editing        → user clicked Edit, inline editor open
+  approved       → user clicked Publish, publishing in progress
+  published      → successfully posted to platform
+  skipped        → user dismissed this content
+
+Valid transitions:
+  generating     → pending_review (generation complete)
+  generating     → failed (Claude API error)
+  pending_review → editing (user clicks Edit)
+  pending_review → approved (user clicks Publish)
+  pending_review → skipped (user dismisses)
+  editing        → pending_review (user saves edit or abandons)
+  approved       → published (API publish succeeds)
+  approved       → failed (API publish fails)
+  failed         → generating (user clicks Retry)
 
 publish_log.status:
-  published     → successfully posted via API
-  draft         → copied to clipboard (Rednote, or fallback)
-  failed        → API error, user notified with Retry option
+  published      → successfully posted via API
+  draft          → copied to clipboard (Rednote, or fallback)
+  failed         → API error, shown with Retry button in dashboard
 ```
+
+**Schema migration required from existing codebase:**
+- `generated_content.status`: expand from `'draft' | 'published'` to the full lifecycle above. Add `failed` status.
+- `publish_log.status`: add `'failed'` (new, not in original schema).
+- Add `generated_content.source_id` FK to link generated content back to source entry.
 
 ## RSS Deduplication
 
@@ -266,24 +276,37 @@ The Substack RSS watcher tracks processed posts by storing each post's RSS `<gui
 
 ## Substack RSS Content Completeness
 
-**Design decision (not an open question):** Substack RSS feeds include full article HTML in the `<content:encoded>` field. This is sufficient for content generation. However, as a fallback, if `<content:encoded>` is missing or truncated (<500 chars), Human will fetch the full Substack page via HTTP and extract content using HTML parsing (cheerio + Readability). This fallback is part of P0 scope. **Note:** Paywalled Substack posts will be truncated in both RSS and HTTP fetch. P0 assumes the user's content is free-tier. Handling paywalled content (e.g., via Substack API with auth) is a P1 concern.
+**Design decision:** Substack RSS feeds include full article HTML in the `<content:encoded>` field. This is sufficient for content generation. Fallback: if `<content:encoded>` is missing or truncated (<500 chars), Human fetches the full Substack page via HTTP and extracts content using cheerio + Readability. **Note:** Paywalled posts will be truncated in both RSS and HTTP fetch. P0 assumes free-tier content. Paywalled content handling is a P1 concern.
+
+## Multi-Tenancy
+
+P0 is single-user (founder only). The RSS watcher polls one feed. Multi-user support (shared poll loop or job queue) is a P2 concern. **P0 guardrail:** restrict signups to invite-only (reuse existing Supabase auth + a hardcoded allowed email list or invite code) to prevent unexpected multi-user load.
+
+## Error Handling
+
+- **RSS fetch failure:** Silent retry on next poll. Alert in dashboard if 3+ consecutive failures: "Can't reach your Substack feed. Check your RSS URL in Settings."
+- **Content generation failure (Claude API):** Retry once after 5 seconds. If still failing, show in dashboard: "Couldn't generate content for '{title}' — [Retry]"
+- **Publish failure:** Show in dashboard with error message + Retry button. Log to `publish_log` with status `failed`.
+- **OAuth token expired:** Publisher layer attempts a token refresh using the stored `refresh_token` first. If refresh fails (token revoked or refresh token also expired), show reconnect prompt: "LinkedIn disconnected — [Reconnect]"
 
 ## P0 Success Criteria
 
-- Founder (you) actively uses it to repurpose Substack → LinkedIn + X for 2+ weeks
-- Content quality: generated posts require <2 edits on average before sending
-- Latency: new Substack post → Telegram notification within 25 minutes on average (15 min worst-case poll delay + ~5 min generation + push)
+- Founder actively uses it to repurpose Substack → LinkedIn + X for 2+ weeks
+- Content quality: generated posts require <2 edits on average before publishing
+- Latency: new Substack post → content appears in dashboard within 25 minutes on average
 - Reliability: 0 missed posts over 2 weeks of monitoring
 
 ## P1 Scope (After P0 Validated)
 
-- Rednote target: Chinese localization + server-side carousel image generation
+- Rednote target: Chinese localization + carousel image generation (client-side canvas, reuse from prototype)
 - note.com target: Japanese localization + publish/copy
-- Expand `/repurpose` to accept any URL (not just Substack) — fetch and parse arbitrary web content
+- Expand manual URL input to accept any URL (not just Substack)
+- Browser notification when new content is ready for review
 - Analytics: track which repurposed posts get the most engagement per platform
 
 ## Open Questions
 
-1. **note.com API:** Does note.com have a public API for posting? If not, what's the publish mechanism — copy to clipboard only?
-2. **Rednote carousel server-side (P1 spike):** The existing canvas code runs in the browser. Porting to server-side requires either Puppeteer (full fidelity, heavier dependency) or Sharp/SVG (lighter, but needs reimplementation of text layout). Recommend a P1 spike to evaluate both approaches before committing. This is non-trivial — budget 2-3 days for the spike.
-3. **Rate limiting:** How often can you post to LinkedIn/X via API before hitting limits? Need to respect platform norms (not spammy).
+1. **note.com API:** Does note.com have a public API for posting? If not, publish mechanism is copy to clipboard only.
+2. **Rednote carousel for P1:** Keep client-side canvas (already built in prototype) or port to server-side? Client-side is simpler since the dashboard is the primary interface. Recommend keeping client-side for P1.
+3. **Rate limiting:** How often can you post to LinkedIn/X via API before hitting limits? Need to respect platform norms.
+4. **Vercel Cron limits:** Hobby plan has 60s execution limit for cron jobs. Is RSS fetch + Claude generation for 2 platforms achievable within 60s? If not, need Pro plan or separate worker.
