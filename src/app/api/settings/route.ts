@@ -48,7 +48,7 @@ export async function PUT(request: NextRequest) {
     updated_at: new Date().toISOString(),
   }
 
-  if (body.rss_url !== undefined) updates.rss_url = body.rss_url
+  if (body.rss_url !== undefined) updates.substack_rss_url = body.rss_url
   if (body.base_voice !== undefined) updates.base_voice = body.base_voice
   if (body.onboarding_complete !== undefined) updates.onboarding_complete = body.onboarding_complete
 
