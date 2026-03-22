@@ -2,11 +2,21 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import type { Source, GeneratedContent } from '@/types'
+import type { ContentAngle } from '@/lib/content-engine'
 import ContentCard from './ContentCard'
+import AngleSelector from './AngleSelector'
 
 interface ReviewItem {
   source: Source
   content: GeneratedContent[]
+}
+
+interface AnalysisState {
+  url: string
+  title: string
+  summary: string
+  angles: ContentAngle[]
+  totalPieces: number
 }
 
 export default function ReviewDashboard() {
@@ -15,6 +25,8 @@ export default function ReviewDashboard() {
   const [urlInput, setUrlInput] = useState('')
   const [addingUrl, setAddingUrl] = useState(false)
   const [urlError, setUrlError] = useState<string | null>(null)
+  const [analysis, setAnalysis] = useState<AnalysisState | null>(null)
+  const [generating, setGenerating] = useState(false)
 
   const fetchItems = useCallback(async () => {
     try {
@@ -39,23 +51,51 @@ export default function ReviewDashboard() {
     if (!url) return
     setAddingUrl(true)
     setUrlError(null)
+    setAnalysis(null)
     try {
-      const res = await fetch('/api/generate-from-url', {
+      const res = await fetch('/api/analyze-url', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url }),
       })
       if (res.ok) {
-        setUrlInput('')
-        await fetchItems()
+        const data = await res.json()
+        setAnalysis({
+          url,
+          title: data.title,
+          summary: data.analysis.article_summary,
+          angles: data.analysis.angles,
+          totalPieces: data.analysis.total_pieces,
+        })
       } else {
         const data = await res.json()
-        setUrlError(data.error ?? 'Failed to process URL')
+        setUrlError(data.error ?? 'Failed to analyze URL')
       }
     } catch {
       setUrlError('Network error — please try again')
     } finally {
       setAddingUrl(false)
+    }
+  }
+
+  async function handleGenerateAngles(selections: { angle: ContentAngle; platform: string }[]) {
+    if (!analysis) return
+    setGenerating(true)
+    try {
+      for (const { angle, platform } of selections) {
+        await fetch('/api/generate-angle', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: analysis.url, angle, platform }),
+        })
+      }
+      setAnalysis(null)
+      setUrlInput('')
+      await fetchItems()
+    } catch {
+      setUrlError('Failed to generate some content')
+    } finally {
+      setGenerating(false)
     }
   }
 
@@ -217,7 +257,7 @@ export default function ReviewDashboard() {
                 whiteSpace: 'nowrap',
               }}
             >
-              {addingUrl ? 'Processing…' : '+ URL'}
+              {addingUrl ? 'Analyzing...' : 'Analyze'}
             </button>
           </div>
           {urlError && (
@@ -226,6 +266,19 @@ export default function ReviewDashboard() {
             </p>
           )}
         </div>
+
+        {/* Angle selector (after analysis) */}
+        {analysis && (
+          <AngleSelector
+            title={analysis.title}
+            summary={analysis.summary}
+            angles={analysis.angles}
+            totalPieces={analysis.totalPieces}
+            onGenerate={handleGenerateAngles}
+            onCancel={() => { setAnalysis(null); setUrlInput('') }}
+            generating={generating}
+          />
+        )}
 
         {/* Content list */}
         {loading ? (
