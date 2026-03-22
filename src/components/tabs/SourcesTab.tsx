@@ -27,6 +27,8 @@ export default function SourcesTab({ onNavigate, sources, onSourcesChange }: Pro
       content: src.content,
       meta: null,
       selected: true,
+      rss_guid: null,
+      rss_published_at: null,
       created_at: new Date().toISOString(),
     }
     onSourcesChange([...sources, newSource])

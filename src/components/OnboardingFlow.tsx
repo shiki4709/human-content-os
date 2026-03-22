@@ -129,7 +129,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
               Connect your Substack
             </h1>
             <p style={{ color: 'var(--text2)', marginBottom: '1.75rem', fontSize: '0.95rem' }}>
-              Enter your Substack URL and we'll pull in your posts automatically.
+              Enter your Substack URL and we&apos;ll pull in your posts automatically.
             </p>
 
             <label
@@ -435,7 +435,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 marginBottom: '0.5rem',
               }}
             >
-              You're all set!
+              You&apos;re all set!
             </h1>
             <p
               style={{

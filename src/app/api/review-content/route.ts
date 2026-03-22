@@ -27,7 +27,7 @@ export async function GET() {
   const allContent = (contentRows ?? []) as GeneratedContent[]
 
   // Collect unique source_ids that have generated content
-  const sourceIds = [...new Set(allContent.map((c) => c.source_id).filter(Boolean))] as string[]
+  const sourceIds = Array.from(new Set(allContent.map((c: { source_id: string | null }) => c.source_id).filter(Boolean))) as string[]
 
   if (sourceIds.length === 0) {
     return NextResponse.json({ items: [] })

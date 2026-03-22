@@ -73,13 +73,17 @@ export async function GET(request: Request) {
     } catch (error) {
       console.error(`RSS fetch failed for user ${setting.user_id}:`, error);
       // Increment fail count
-      await supabase.rpc('increment_rss_fail_count', { uid: setting.user_id }).catch(() => {
-        // If RPC doesn't exist, do a simple update
-        supabase
-          .from('user_settings')
-          .update({ rss_fail_count: (setting as any).rss_fail_count ? (setting as any).rss_fail_count + 1 : 1 })
-          .eq('user_id', setting.user_id);
-      });
+      // Simple increment — fetch current count first
+      const { data: currentSettings } = await supabase
+        .from('user_settings')
+        .select('rss_fail_count')
+        .eq('user_id', setting.user_id)
+        .single();
+      const currentCount = currentSettings?.rss_fail_count ?? 0;
+      await supabase
+        .from('user_settings')
+        .update({ rss_fail_count: currentCount + 1 })
+        .eq('user_id', setting.user_id);
     }
   }
 

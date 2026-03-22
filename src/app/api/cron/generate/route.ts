@@ -110,9 +110,10 @@ export async function GET(request: Request) {
         error_message: error instanceof Error ? error.message : String(error),
       }))
 
-      await supabase.from('generated_content').insert(failureInserts).catch((e) => {
-        console.error('Failed to store failure record:', e)
-      })
+      const { error: insertError } = await supabase.from('generated_content').insert(failureInserts)
+      if (insertError) {
+        console.error('Failed to store failure record:', insertError)
+      }
     }
   }
 
