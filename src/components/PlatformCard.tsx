@@ -77,9 +77,28 @@ export default function PlatformCard({ content, onPublish, onRefine }: PlatformC
     ? content.content.split(/\n?---\n?/).map((t) => t.trim()).filter(Boolean)
     : []
 
+  const [copied, setCopied] = useState(false)
+
   async function handlePublish() {
     setPublishing(true)
     try {
+      // Copy content to clipboard
+      const textToCopy = isX
+        ? tweets.join('\n\n')
+        : content.content
+      await navigator.clipboard.writeText(textToCopy)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 3000)
+
+      // Open platform in new tab
+      if (content.platform === 'linkedin') {
+        window.open('https://www.linkedin.com/feed/', '_blank')
+      } else if (content.platform === 'x') {
+        // Pre-fill first tweet if possible
+        const firstTweet = tweets[0] || content.content.slice(0, 280)
+        window.open(`https://x.com/intent/tweet?text=${encodeURIComponent(firstTweet)}`, '_blank')
+      }
+
       await onPublish(content.id)
     } finally {
       setPublishing(false)
@@ -312,7 +331,7 @@ export default function PlatformCard({ content, onPublish, onRefine }: PlatformC
                 cursor: publishing ? 'not-allowed' : 'pointer',
               }}
             >
-              {publishing ? 'Publishing…' : 'Publish'}
+              {publishing ? 'Copying…' : copied ? 'Copied! ✓' : `Copy & Open ${meta.label}`}
             </button>
           </div>
         )}
