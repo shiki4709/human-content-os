@@ -8,6 +8,7 @@ interface ContentCardProps {
   content: GeneratedContent[]
   onPublish: (id: string) => Promise<void>
   onRefine: (id: string, instruction: string) => Promise<void>
+  onDelete: (sourceId: string) => Promise<void>
 }
 
 function timeAgo(dateStr: string): string {
@@ -20,7 +21,7 @@ function timeAgo(dateStr: string): string {
   return `${days}d ago`
 }
 
-export default function ContentCard({ source, content, onPublish, onRefine }: ContentCardProps) {
+export default function ContentCard({ source, content, onPublish, onRefine, onDelete }: ContentCardProps) {
   const allPublished = content.length > 0 && content.every((c) => c.status === 'published')
   const sourceDate = source.rss_published_at ?? source.created_at
 
@@ -63,27 +64,43 @@ export default function ContentCard({ source, content, onPublish, onRefine }: Co
           </p>
         </div>
 
-        {allPublished && (
-          <div
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
+          {allPublished && (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                padding: '4px 10px',
+                borderRadius: '999px',
+                backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                border: '1px solid rgba(34, 197, 94, 0.25)',
+              }}
+            >
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgb(34,197,94)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+              <span style={{ fontSize: '0.75rem', color: 'rgb(34,197,94)', fontWeight: 600 }}>
+                All published
+              </span>
+            </div>
+          )}
+          <button
+            onClick={() => onDelete(source.id)}
+            title="Delete"
             style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-              padding: '4px 10px',
-              borderRadius: '999px',
-              backgroundColor: 'rgba(34, 197, 94, 0.1)',
-              border: '1px solid rgba(34, 197, 94, 0.25)',
-              flexShrink: 0,
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              padding: '4px',
+              color: 'var(--text3)',
+              fontSize: '0.875rem',
+              lineHeight: 1,
             }}
           >
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgb(34,197,94)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="20 6 9 17 4 12" />
-            </svg>
-            <span style={{ fontSize: '0.75rem', color: 'rgb(34,197,94)', fontWeight: 600 }}>
-              All published
-            </span>
-          </div>
-        )}
+            &#x2715;
+          </button>
+        </div>
       </div>
 
       {/* Platform cards grid */}

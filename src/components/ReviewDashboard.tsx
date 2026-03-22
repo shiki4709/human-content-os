@@ -83,6 +83,17 @@ export default function ReviewDashboard() {
     }
   }
 
+  async function handleDelete(sourceId: string) {
+    const res = await fetch('/api/review-content/delete', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ source_id: sourceId }),
+    })
+    if (res.ok) {
+      setItems((prev) => prev.filter((item) => item.source.id !== sourceId))
+    }
+  }
+
   async function handleRefine(id: string, instruction: string) {
     const item = items.flatMap((i) => i.content).find((c) => c.id === id)
     if (!item) return
@@ -245,6 +256,7 @@ export default function ReviewDashboard() {
                 content={item.content}
                 onPublish={handlePublish}
                 onRefine={handleRefine}
+                onDelete={handleDelete}
               />
             ))}
           </div>
