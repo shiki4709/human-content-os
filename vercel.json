@@ -1,4 +1,11 @@
 {
+  "functions": {
+    "src/app/api/analyze-url/route.ts": { "maxDuration": 60 },
+    "src/app/api/generate-angle/route.ts": { "maxDuration": 60 },
+    "src/app/api/generate-from-url/route.ts": { "maxDuration": 60 },
+    "src/app/api/cron/generate/route.ts": { "maxDuration": 60 },
+    "src/app/api/cron/poll-rss/route.ts": { "maxDuration": 60 }
+  },
   "crons": [
     {
       "path": "/api/cron/poll-rss",
