@@ -13,6 +13,38 @@ const TYPE_LABELS: Record<string, { emoji: string; label: string }> = {
   quote: { emoji: '💬', label: 'Quote' },
 }
 
+// Which angle types perform best on which platform (based on viral content research)
+const PLATFORM_RECS: Record<string, Record<string, 'high' | 'medium' | 'low'>> = {
+  linkedin: {
+    story: 'high',           // Personal stories get 3-5x more reach on LinkedIn
+    key_insight: 'high',     // Insight-driven posts perform well
+    data_point: 'high',      // Specific stats stop the scroll
+    contrarian_take: 'medium', // Works but riskier on professional platform
+    framework: 'medium',
+    how_to: 'medium',
+    quote: 'low',
+  },
+  x: {
+    contrarian_take: 'high', // Hot takes drive replies which boost reach
+    data_point: 'high',      // Surprising stats get bookmarked + reposted
+    framework: 'high',       // Thread-friendly, gets saved
+    how_to: 'high',          // Listicle threads perform best on X
+    key_insight: 'medium',
+    quote: 'medium',         // Good as standalone tweet
+    story: 'low',            // Stories work less well in thread format
+  },
+}
+
+function getViralScore(type: string, platform: string): 'high' | 'medium' | 'low' {
+  return PLATFORM_RECS[platform]?.[type] || 'medium'
+}
+
+const VIRAL_BADGE: Record<string, { label: string; color: string; bg: string }> = {
+  high: { label: 'High viral potential', color: 'rgb(34, 197, 94)', bg: 'rgba(34, 197, 94, 0.1)' },
+  medium: { label: 'Good fit', color: 'rgb(234, 179, 8)', bg: 'rgba(234, 179, 8, 0.1)' },
+  low: { label: 'Lower fit', color: 'var(--text3)', bg: 'var(--bg)' },
+}
+
 const PLATFORM_LABELS: Record<string, { icon: string; color: string }> = {
   linkedin: { icon: '🔵', color: '#0a66c2' },
   x: { icon: '⬛', color: '#000' },
@@ -28,12 +60,15 @@ interface Props {
   generating: boolean
 }
 
-export default function AngleSelector({ title, summary, angles, totalPieces, onGenerate, onCancel, generating }: Props) {
-  // Default: select all angles with all their platforms
+export default function AngleSelector({ title, summary, angles: initialAngles, onGenerate, onCancel, generating }: Props) {
+  const [angles, setAngles] = useState(initialAngles)
   const [selected, setSelected] = useState<Record<string, string[]>>(() => {
     const init: Record<string, string[]> = {}
-    for (const angle of angles) {
-      init[angle.id] = [...angle.platforms]
+    for (const angle of initialAngles) {
+      // Auto-select platforms where the angle has high viral potential
+      init[angle.id] = angle.platforms.filter(
+        (p) => getViralScore(angle.type, p) !== 'low'
+      )
     }
     return init
   })
@@ -46,6 +81,15 @@ export default function AngleSelector({ title, summary, angles, totalPieces, onG
       } else {
         return { ...prev, [angleId]: [...current, platform] }
       }
+    })
+  }
+
+  function removeAngle(angleId: string) {
+    setAngles((prev) => prev.filter((a) => a.id !== angleId))
+    setSelected((prev) => {
+      const next = { ...prev }
+      delete next[angleId]
+      return next
     })
   }
 
@@ -79,7 +123,7 @@ export default function AngleSelector({ title, summary, angles, totalPieces, onG
           {summary}
         </p>
         <p style={{ fontSize: '0.875rem', color: 'var(--accent)', fontWeight: 600 }}>
-          {angles.length} angles found &middot; up to {totalPieces} content pieces
+          {angles.length} angles found &middot; {selectedCount} selected to generate
         </p>
       </div>
 
@@ -102,7 +146,7 @@ export default function AngleSelector({ title, summary, angles, totalPieces, onG
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
                 <span style={{ fontSize: '1.25rem' }}>{typeInfo.emoji}</span>
                 <div style={{ flex: 1 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem', flexWrap: 'wrap' }}>
                     <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text)' }}>
                       {angle.title}
                     </span>
@@ -116,17 +160,21 @@ export default function AngleSelector({ title, summary, angles, totalPieces, onG
                   <p style={{ fontSize: '0.8rem', color: 'var(--text2)', lineHeight: '1.4', marginBottom: '0.625rem' }}>
                     {angle.summary}
                   </p>
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+
+                  {/* Platform buttons with viral score */}
+                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                     {angle.platforms.map((platform) => {
                       const pInfo = PLATFORM_LABELS[platform] || { icon: '📝', color: '#666' }
                       const isSelected = (selected[angle.id] || []).includes(platform)
+                      const viral = getViralScore(angle.type, platform)
+                      const badge = VIRAL_BADGE[viral]
                       return (
                         <button
                           key={platform}
                           onClick={() => togglePlatform(angle.id, platform)}
                           style={{
-                            display: 'flex', alignItems: 'center', gap: '4px',
-                            padding: '4px 10px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 600,
+                            display: 'flex', alignItems: 'center', gap: '6px',
+                            padding: '5px 10px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 600,
                             border: `1.5px solid ${isSelected ? pInfo.color : 'var(--border)'}`,
                             backgroundColor: isSelected ? `${pInfo.color}10` : 'transparent',
                             color: isSelected ? pInfo.color : 'var(--text3)',
@@ -134,16 +182,43 @@ export default function AngleSelector({ title, summary, angles, totalPieces, onG
                           }}
                         >
                           {pInfo.icon} {platform === 'linkedin' ? 'LinkedIn' : 'X'}
+                          {viral === 'high' && (
+                            <span style={{
+                              fontSize: '0.65rem', padding: '1px 5px', borderRadius: '3px',
+                              backgroundColor: badge.bg, color: badge.color, fontWeight: 700,
+                            }}>
+                              REC
+                            </span>
+                          )}
                         </button>
                       )
                     })}
                   </div>
                 </div>
+
+                {/* Delete angle button */}
+                <button
+                  onClick={() => removeAngle(angle.id)}
+                  title="Remove this angle"
+                  style={{
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    padding: '2px 6px', color: 'var(--text3)', fontSize: '0.875rem',
+                    lineHeight: 1, flexShrink: 0,
+                  }}
+                >
+                  &#x2715;
+                </button>
               </div>
             </div>
           )
         })}
       </div>
+
+      {angles.length === 0 && (
+        <p style={{ textAlign: 'center', color: 'var(--text3)', fontSize: '0.875rem', padding: '1rem 0' }}>
+          All angles removed. Click Cancel to start over.
+        </p>
+      )}
 
       <div style={{ display: 'flex', gap: '0.5rem' }}>
         <button

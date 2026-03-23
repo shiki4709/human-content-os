@@ -27,6 +27,7 @@ export default function ReviewDashboard() {
   const [urlError, setUrlError] = useState<string | null>(null)
   const [analysis, setAnalysis] = useState<AnalysisState | null>(null)
   const [generating, setGenerating] = useState(false)
+  const [platforms, setPlatforms] = useState<Record<string, boolean>>({ linkedin: true, x: true })
 
   const fetchItems = useCallback(async () => {
     try {
@@ -53,6 +54,7 @@ export default function ReviewDashboard() {
     setUrlError(null)
     setAnalysis(null)
     try {
+      const enabledPlatforms = Object.entries(platforms).filter(([, v]) => v).map(([k]) => k)
       const res = await fetch('/api/analyze-url', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -60,12 +62,17 @@ export default function ReviewDashboard() {
       })
       if (res.ok) {
         const data = await res.json()
+        // Filter angle platforms to only user's selected ones
+        const filteredAngles = (data.analysis.angles as ContentAngle[]).map((a) => ({
+          ...a,
+          platforms: a.platforms.filter((p) => enabledPlatforms.includes(p)),
+        })).filter((a) => a.platforms.length > 0)
         setAnalysis({
           url,
           title: data.title,
           summary: data.analysis.article_summary,
-          angles: data.analysis.angles,
-          totalPieces: data.analysis.total_pieces,
+          angles: filteredAngles,
+          totalPieces: filteredAngles.reduce((sum, a) => sum + a.platforms.length, 0),
         })
       } else {
         const data = await res.json()
@@ -194,7 +201,7 @@ export default function ReviewDashboard() {
           Human
         </span>
         <a
-          href="/settings"
+          href="/dashboard/settings"
           style={{
             fontSize: '0.875rem',
             color: 'var(--text2)',
@@ -213,6 +220,29 @@ export default function ReviewDashboard() {
           padding: '2rem 1.5rem',
         }}
       >
+        {/* Platform toggles */}
+        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+          {[
+            { id: 'linkedin', label: 'LinkedIn', icon: '🔵' },
+            { id: 'x', label: 'X', icon: '⬛' },
+          ].map((p) => (
+            <button
+              key={p.id}
+              onClick={() => setPlatforms((prev) => ({ ...prev, [p.id]: !prev[p.id] }))}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '6px',
+                padding: '6px 14px', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 600,
+                border: `1.5px solid ${platforms[p.id] ? 'var(--accent)' : 'var(--border)'}`,
+                backgroundColor: platforms[p.id] ? 'rgba(79, 70, 229, 0.06)' : 'transparent',
+                color: platforms[p.id] ? 'var(--accent)' : 'var(--text3)',
+                cursor: 'pointer', transition: 'all 0.15s',
+              }}
+            >
+              {p.icon} {p.label}
+            </button>
+          ))}
+        </div>
+
         {/* URL input bar */}
         <div style={{ marginBottom: '2rem' }}>
           <div
