@@ -9,12 +9,15 @@ interface PlatformCardProps {
   onRefine: (id: string, instruction: string) => Promise<void>
 }
 
-const PLATFORM_META: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
+const PLATFORM_META: Record<string, { label: string; color: string; bgClass: string; borderClass: string; textClass: string; icon: React.ReactNode }> = {
   linkedin: {
     label: 'LinkedIn',
     color: '#0a66c2',
+    bgClass: 'bg-linkedin',
+    borderClass: 'border-linkedin/20',
+    textClass: 'text-linkedin',
     icon: (
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="white">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="white">
         <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6zM2 9h4v12H2z" />
         <circle cx="4" cy="4" r="2" />
       </svg>
@@ -23,38 +26,44 @@ const PLATFORM_META: Record<string, { label: string; color: string; icon: React.
   x: {
     label: 'X',
     color: '#000000',
+    bgClass: 'bg-xblack',
+    borderClass: 'border-xblack/10',
+    textClass: 'text-xblack',
     icon: (
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="white">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="white">
         <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
       </svg>
     ),
   },
 }
 
-function TweetCard({ text, index }: { text: string; index: number }) {
+// Individual tweet card in a thread
+function TweetCard({ text, index, total }: { text: string; index: number; total: number }) {
   return (
-    <div
-      style={{
-        padding: '0.75rem',
-        borderRadius: '8px',
-        border: '1px solid var(--border)',
-        backgroundColor: 'var(--bg)',
-        marginBottom: '0.5rem',
-      }}
-    >
-      <div
-        style={{
-          fontSize: '0.75rem',
-          color: 'var(--text3)',
-          marginBottom: '0.35rem',
-          fontWeight: 500,
-        }}
-      >
+    <div className="relative pl-9 pb-3">
+      {/* Avatar */}
+      <div className="absolute left-0 top-0 w-7 h-7 rounded-full bg-bg3 border border-border flex items-center justify-center text-[10px] font-bold text-text3">
         {index + 1}
       </div>
-      <p style={{ color: 'var(--text)', fontSize: '0.875rem', lineHeight: '1.5', whiteSpace: 'pre-wrap' }}>
-        {text}
-      </p>
+
+      {/* Thread line */}
+      {index < total - 1 && (
+        <div className="absolute left-3.5 top-8 bottom-0 w-px bg-border" />
+      )}
+
+      {/* Tweet bubble */}
+      <div className="bg-bg rounded-xl border border-border px-3.5 py-3">
+        <p className="text-sm text-text leading-relaxed whitespace-pre-wrap">{text}</p>
+        <div className="flex items-center justify-between mt-2.5 pt-2 border-t border-border">
+          <span className="text-[10px] text-text3 font-medium">Tweet {index + 1}</span>
+          <span className={[
+            'text-[10px] font-semibold',
+            text.length > 260 ? 'text-red' : text.length > 220 ? 'text-gold' : 'text-text3',
+          ].join(' ')}>
+            {text.length}/280
+          </span>
+        </div>
+      </div>
     </div>
   )
 }
@@ -65,10 +74,14 @@ export default function PlatformCard({ content, onPublish, onRefine }: PlatformC
   const [refineInstruction, setRefineInstruction] = useState('')
   const [publishing, setPublishing] = useState(false)
   const [refining, setRefining] = useState(false)
+  const [copied, setCopied] = useState(false)
 
   const meta = PLATFORM_META[content.platform] ?? {
     label: content.platform,
     color: '#666',
+    bgClass: 'bg-text2',
+    borderClass: 'border-border',
+    textClass: 'text-text2',
     icon: null,
   }
 
@@ -76,8 +89,6 @@ export default function PlatformCard({ content, onPublish, onRefine }: PlatformC
   const tweets = isX
     ? content.content.split(/\n?---\n?/).map((t) => t.trim()).filter(Boolean)
     : []
-
-  const [copied, setCopied] = useState(false)
 
   async function handlePublish() {
     setPublishing(true)
@@ -120,222 +131,177 @@ export default function PlatformCard({ content, onPublish, onRefine }: PlatformC
   const isFailed = content.status === 'failed'
 
   return (
-    <div
-      style={{
-        backgroundColor: 'var(--bg2)',
-        border: '1px solid var(--border)',
-        borderRadius: '12px',
-        overflow: 'hidden',
-      }}
-    >
-      {/* Header */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '0.875rem 1rem',
-          borderBottom: '1px solid var(--border)',
-          backgroundColor: 'var(--bg)',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <div
-            style={{
-              width: '26px',
-              height: '26px',
-              borderRadius: '6px',
-              backgroundColor: meta.color,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0,
-            }}
-          >
+    <div className={[
+      'rounded-xl border overflow-hidden flex flex-col',
+      isPublished ? 'border-greenb/50' : 'border-border',
+      'bg-bg2',
+    ].join(' ')}>
+      {/* Card header */}
+      <div className="flex items-center justify-between px-3.5 py-2.5 bg-bg border-b border-border">
+        <div className="flex items-center gap-2">
+          <div className={['w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0', meta.bgClass].join(' ')}>
             {meta.icon}
           </div>
-          <span style={{ fontWeight: 600, color: 'var(--text)', fontSize: '0.875rem' }}>
-            {meta.label}
-          </span>
+          <span className="text-xs font-semibold text-text">{meta.label}</span>
+          {isX && tweets.length > 1 && (
+            <span className="text-[10px] text-text3 bg-bg2 border border-border rounded-full px-2 py-0.5">
+              {tweets.length} tweets
+            </span>
+          )}
         </div>
 
         {/* Status badge */}
         {isPublished && (
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-              padding: '2px 8px',
-              borderRadius: '999px',
-              backgroundColor: 'rgba(34, 197, 94, 0.1)',
-              border: '1px solid rgba(34, 197, 94, 0.25)',
-            }}
-          >
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgb(34,197,94)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+          <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-greenl border border-greenb">
+            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="text-green">
               <polyline points="20 6 9 17 4 12" />
             </svg>
-            <span style={{ fontSize: '0.75rem', color: 'rgb(34,197,94)', fontWeight: 600 }}>
-              Published
-            </span>
+            <span className="text-[10px] font-semibold text-green">Published</span>
           </div>
         )}
         {isFailed && (
-          <div
-            style={{
-              padding: '2px 8px',
-              borderRadius: '999px',
-              backgroundColor: 'rgba(239, 68, 68, 0.1)',
-              border: '1px solid rgba(239, 68, 68, 0.25)',
-            }}
-          >
-            <span style={{ fontSize: '0.75rem', color: 'rgb(239,68,68)', fontWeight: 600 }}>
-              Failed
-            </span>
+          <div className="px-2 py-0.5 rounded-full bg-redl border border-red/20">
+            <span className="text-[10px] font-semibold text-red">Failed</span>
           </div>
         )}
       </div>
 
-      {/* Content */}
-      <div style={{ padding: '1rem' }}>
+      {/* Content area */}
+      <div className="flex-1 p-3.5">
         {editing ? (
           <textarea
             value={editedText}
             onChange={(e) => setEditedText(e.target.value)}
-            style={{
-              width: '100%',
-              minHeight: '180px',
-              padding: '0.75rem',
-              borderRadius: '8px',
-              border: '1px solid var(--border)',
-              backgroundColor: 'var(--bg)',
-              color: 'var(--text)',
-              fontSize: '0.875rem',
-              lineHeight: '1.6',
-              resize: 'vertical',
-              outline: 'none',
-              fontFamily: 'inherit',
-              boxSizing: 'border-box',
-            }}
+            className="w-full min-h-[160px] p-3 rounded-lg border border-border bg-bg text-text text-sm leading-relaxed resize-y outline-none focus:border-border2 font-[inherit] box-border transition-colors duration-150"
           />
         ) : isX && tweets.length > 1 ? (
-          <div>
+          <div className="space-y-0">
             {tweets.map((tweet, i) => (
-              <TweetCard key={i} text={tweet} index={i} />
+              <TweetCard key={i} text={tweet} index={i} total={tweets.length} />
             ))}
           </div>
         ) : (
-          <p
-            style={{
-              color: 'var(--text)',
-              fontSize: '0.875rem',
-              lineHeight: '1.6',
-              whiteSpace: 'pre-wrap',
-            }}
-          >
+          <p className="text-sm text-text leading-relaxed whitespace-pre-wrap">
             {content.content}
           </p>
         )}
 
-        {/* Error message */}
+        {/* Error */}
         {isFailed && content.error_message && (
-          <p style={{ color: 'rgb(239,68,68)', fontSize: '0.8rem', marginTop: '0.5rem' }}>
-            {content.error_message}
-          </p>
+          <div className="flex items-start gap-2 mt-3 p-2.5 rounded-lg bg-redl border border-red/20">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-red flex-shrink-0 mt-px">
+              <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+            <p className="text-xs text-red leading-snug">{content.error_message}</p>
+          </div>
         )}
 
-        {/* Refine bar (shown while editing) */}
+        {/* Refine bar */}
         {editing && (
-          <div
-            style={{
-              display: 'flex',
-              gap: '0.5rem',
-              marginTop: '0.75rem',
-            }}
-          >
+          <div className="flex gap-1.5 mt-3">
             <input
               type="text"
               placeholder="Refine: make it punchier, add a hook…"
               value={refineInstruction}
               onChange={(e) => setRefineInstruction(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleRefine()}
-              style={{
-                flex: 1,
-                padding: '0.5rem 0.75rem',
-                borderRadius: '6px',
-                border: '1px solid var(--border)',
-                backgroundColor: 'var(--bg)',
-                color: 'var(--text)',
-                fontSize: '0.8rem',
-                outline: 'none',
-                fontFamily: 'inherit',
-              }}
+              className="flex-1 px-3 py-2 rounded-lg border border-border bg-bg text-text text-xs outline-none focus:border-border2 font-[inherit] placeholder:text-text3 transition-colors duration-150"
             />
             <button
               onClick={handleRefine}
               disabled={!refineInstruction.trim() || refining}
-              style={{
-                padding: '0.5rem 0.875rem',
-                borderRadius: '6px',
-                border: 'none',
-                backgroundColor: refineInstruction.trim() && !refining ? 'var(--accent)' : 'var(--border)',
-                color: refineInstruction.trim() && !refining ? '#fff' : 'var(--text3)',
-                fontSize: '0.8rem',
-                fontWeight: 600,
-                cursor: refineInstruction.trim() && !refining ? 'pointer' : 'not-allowed',
-                whiteSpace: 'nowrap',
-              }}
+              className={[
+                'px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-150 whitespace-nowrap',
+                refineInstruction.trim() && !refining
+                  ? 'bg-text text-bg hover:opacity-90 cursor-pointer'
+                  : 'bg-bg3 text-text3 cursor-not-allowed',
+              ].join(' ')}
             >
-              {refining ? '…' : 'Refine'}
-            </button>
-          </div>
-        )}
-
-        {/* Action buttons */}
-        {!isPublished && (
-          <div
-            style={{
-              display: 'flex',
-              gap: '0.5rem',
-              marginTop: '0.875rem',
-            }}
-          >
-            <button
-              onClick={() => setEditing((v) => !v)}
-              style={{
-                flex: 1,
-                padding: '0.5rem',
-                borderRadius: '6px',
-                border: '1px solid var(--border)',
-                backgroundColor: editing ? 'var(--bg3)' : 'var(--bg)',
-                color: 'var(--text2)',
-                fontSize: '0.8rem',
-                fontWeight: 500,
-                cursor: 'pointer',
-              }}
-            >
-              {editing ? 'Done editing' : 'Edit'}
-            </button>
-            <button
-              onClick={handlePublish}
-              disabled={publishing}
-              style={{
-                flex: 2,
-                padding: '0.5rem',
-                borderRadius: '6px',
-                border: 'none',
-                backgroundColor: publishing ? 'var(--border)' : 'var(--accent)',
-                color: publishing ? 'var(--text3)' : '#fff',
-                fontSize: '0.8rem',
-                fontWeight: 600,
-                cursor: publishing ? 'not-allowed' : 'pointer',
-              }}
-            >
-              {publishing ? 'Copying…' : copied ? 'Copied! ✓' : `Copy & Open ${meta.label}`}
+              {refining ? (
+                <span className="w-3.5 h-3.5 rounded-full border-2 border-bg/30 border-t-bg animate-spin-fast block" />
+              ) : 'Refine'}
             </button>
           </div>
         )}
       </div>
+
+      {/* Action footer */}
+      {!isPublished && (
+        <div className="px-3.5 pb-3.5 flex gap-2">
+          <button
+            onClick={() => setEditing((v) => !v)}
+            className={[
+              'flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg border text-xs font-medium transition-all duration-150',
+              editing
+                ? 'border-border2 bg-bg3 text-text'
+                : 'border-border bg-bg text-text2 hover:border-border2 hover:text-text',
+            ].join(' ')}
+          >
+            {editing ? (
+              <>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+                Done
+              </>
+            ) : (
+              <>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                </svg>
+                Edit
+              </>
+            )}
+          </button>
+
+          <button
+            onClick={handlePublish}
+            disabled={publishing}
+            className={[
+              'flex-[2] flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all duration-150',
+              !publishing
+                ? `${meta.bgClass} text-white hover:opacity-90 active:scale-[0.97] cursor-pointer`
+                : 'bg-bg3 text-text3 cursor-not-allowed',
+            ].join(' ')}
+          >
+            {publishing ? (
+              <>
+                <span className="w-3.5 h-3.5 rounded-full border-2 border-text3/30 border-t-text3 animate-spin-fast" />
+                Copying…
+              </>
+            ) : copied ? (
+              <>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+                Copied!
+              </>
+            ) : (
+              <>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                  <polyline points="15 3 21 3 21 9" />
+                  <line x1="10" y1="14" x2="21" y2="3" />
+                </svg>
+                Copy &amp; Open {meta.label}
+              </>
+            )}
+          </button>
+        </div>
+      )}
+
+      {/* Published state footer */}
+      {isPublished && (
+        <div className="px-3.5 pb-3 pt-1">
+          <div className="flex items-center gap-1.5 text-xs text-green font-medium">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+            Posted to {meta.label}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

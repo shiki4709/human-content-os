@@ -26,106 +26,67 @@ export default function ContentCard({ source, content, onPublish, onRefine, onDe
   const sourceDate = source.rss_published_at ?? source.created_at
 
   return (
-    <div
-      style={{
-        backgroundColor: 'var(--bg)',
-        border: '1px solid var(--border)',
-        borderRadius: '16px',
-        padding: '1.5rem',
-        marginBottom: '1.25rem',
-      }}
-    >
+    <div className="bg-bg rounded-2xl border border-border shadow-sm overflow-hidden animate-fade-up">
       {/* Source header */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'flex-start',
-          justifyContent: 'space-between',
-          marginBottom: '1.25rem',
-          gap: '1rem',
-        }}
-      >
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <h3
-            style={{
-              fontSize: '1rem',
-              fontWeight: 600,
-              color: 'var(--text)',
-              marginBottom: '0.2rem',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {source.label}
-          </h3>
-          <p style={{ fontSize: '0.8rem', color: 'var(--text3)' }}>
-            From Substack · {timeAgo(sourceDate)}
-          </p>
+      <div className="flex items-start justify-between px-5 py-4 border-b border-border bg-bg2 gap-4">
+        <div className="flex items-start gap-3 flex-1 min-w-0">
+          {/* Source icon */}
+          <div className="w-8 h-8 rounded-lg bg-bg3 flex items-center justify-center flex-shrink-0 mt-0.5">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text3">
+              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+            </svg>
+          </div>
+
+          <div className="flex-1 min-w-0">
+            <h3 className="text-sm font-semibold text-text leading-snug truncate">
+              {source.label}
+            </h3>
+            <p className="text-xs text-text3 mt-0.5">
+              From Substack · {timeAgo(sourceDate)}
+            </p>
+          </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
+        <div className="flex items-center gap-2 flex-shrink-0">
           {allPublished && (
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
-                padding: '4px 10px',
-                borderRadius: '999px',
-                backgroundColor: 'rgba(34, 197, 94, 0.1)',
-                border: '1px solid rgba(34, 197, 94, 0.25)',
-              }}
-            >
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgb(34,197,94)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-greenl border border-greenb">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="text-green">
                 <polyline points="20 6 9 17 4 12" />
               </svg>
-              <span style={{ fontSize: '0.75rem', color: 'rgb(34,197,94)', fontWeight: 600 }}>
-                All published
-              </span>
+              <span className="text-[11px] font-semibold text-green">All published</span>
             </div>
           )}
           <button
             onClick={() => onDelete(source.id)}
             title="Delete"
-            style={{
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              padding: '4px',
-              color: 'var(--text3)',
-              fontSize: '0.875rem',
-              lineHeight: 1,
-            }}
+            className="w-7 h-7 rounded-lg flex items-center justify-center text-text3 hover:text-text hover:bg-bg3 transition-all duration-150"
           >
-            &#x2715;
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
           </button>
         </div>
       </div>
 
-      {/* Platform cards grid */}
-      {content.length === 0 ? (
-        <p style={{ color: 'var(--text3)', fontSize: '0.875rem', textAlign: 'center', padding: '1rem 0' }}>
-          No generated content yet.
-        </p>
-      ) : (
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-            gap: '0.875rem',
-          }}
-        >
-          {content.map((item) => (
-            <PlatformCard
-              key={item.id}
-              content={item}
-              onPublish={onPublish}
-              onRefine={onRefine}
-            />
-          ))}
-        </div>
-      )}
+      {/* Platform cards */}
+      <div className="p-4">
+        {content.length === 0 ? (
+          <p className="text-xs text-text3 text-center py-6">No generated content yet.</p>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {content.map((item) => (
+              <PlatformCard
+                key={item.id}
+                content={item}
+                onPublish={onPublish}
+                onRefine={onRefine}
+              />
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

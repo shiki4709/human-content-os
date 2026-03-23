@@ -39,15 +39,23 @@ function getViralScore(type: string, platform: string): 'high' | 'medium' | 'low
   return PLATFORM_RECS[platform]?.[type] || 'medium'
 }
 
-const VIRAL_BADGE: Record<string, { label: string; color: string; bg: string }> = {
-  high: { label: 'High viral potential', color: 'rgb(34, 197, 94)', bg: 'rgba(34, 197, 94, 0.1)' },
-  medium: { label: 'Good fit', color: 'rgb(234, 179, 8)', bg: 'rgba(234, 179, 8, 0.1)' },
-  low: { label: 'Lower fit', color: 'var(--text3)', bg: 'var(--bg)' },
+// Tooltip copy explaining why an angle is recommended
+const REC_REASONS: Record<string, Record<string, string>> = {
+  linkedin: {
+    story: 'Personal stories get 3–5× more reach on LinkedIn',
+    key_insight: 'Insight-driven posts consistently top LinkedIn feeds',
+    data_point: 'Specific stats stop the scroll and earn saves',
+  },
+  x: {
+    contrarian_take: 'Hot takes drive replies, which boost algorithmic reach',
+    data_point: 'Surprising stats get bookmarked and reposted',
+    framework: 'Thread-friendly frameworks get saved and shared',
+    how_to: 'Listicle threads are the highest-performing format on X',
+  },
 }
 
-const PLATFORM_LABELS: Record<string, { icon: string; color: string }> = {
-  linkedin: { icon: '🔵', color: '#0a66c2' },
-  x: { icon: '⬛', color: '#000' },
+function getRecReason(type: string, platform: string): string {
+  return REC_REASONS[platform]?.[type] ?? 'High engagement potential on this platform'
 }
 
 interface Props {
@@ -72,6 +80,7 @@ export default function AngleSelector({ title, summary, angles: initialAngles, o
     }
     return init
   })
+  const [tooltip, setTooltip] = useState<string | null>(null)
 
   function togglePlatform(angleId: string, platform: string) {
     setSelected((prev) => {
@@ -108,26 +117,30 @@ export default function AngleSelector({ title, summary, angles: initialAngles, o
   const selectedCount = selections.length
 
   return (
-    <div style={{
-      backgroundColor: 'var(--bg)',
-      border: '1px solid var(--border)',
-      borderRadius: '16px',
-      padding: '1.5rem',
-      marginBottom: '1.25rem',
-    }}>
-      <div style={{ marginBottom: '1.25rem' }}>
-        <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text)', marginBottom: '0.25rem' }}>
+    <div className="bg-bg rounded-2xl border border-border shadow-sm overflow-hidden">
+      {/* Header */}
+      <div className="px-5 py-4 border-b border-border bg-bg2">
+        <h3 className="text-sm font-semibold text-text leading-snug line-clamp-2 mb-1">
           {title}
         </h3>
-        <p style={{ fontSize: '0.8rem', color: 'var(--text3)', marginBottom: '0.5rem' }}>
+        <p className="text-xs text-text3 leading-relaxed line-clamp-3 mb-2">
           {summary}
         </p>
-        <p style={{ fontSize: '0.875rem', color: 'var(--accent)', fontWeight: 600 }}>
-          {angles.length} angles found &middot; {selectedCount} selected to generate
-        </p>
+        <div className="flex items-center gap-3">
+          <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-accent bg-acl border border-acb rounded-full px-2.5 py-1">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+            </svg>
+            {angles.length} angles found
+          </span>
+          <span className="text-xs text-text3">
+            {selectedCount} selected to generate
+          </span>
+        </div>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.25rem' }}>
+      {/* Angles list */}
+      <div className="p-4 space-y-3">
         {angles.map((angle) => {
           const typeInfo = TYPE_LABELS[angle.type] || { emoji: '📝', label: angle.type }
           const isAnySelected = (selected[angle.id] || []).length > 0
@@ -135,115 +148,154 @@ export default function AngleSelector({ title, summary, angles: initialAngles, o
           return (
             <div
               key={angle.id}
-              style={{
-                padding: '1rem',
-                borderRadius: '10px',
-                border: `1px solid ${isAnySelected ? 'var(--accent)' : 'var(--border)'}`,
-                backgroundColor: isAnySelected ? 'rgba(79, 70, 229, 0.04)' : 'var(--bg2)',
-                transition: 'all 0.15s',
-              }}
+              className={[
+                'rounded-xl border p-4 transition-all duration-150',
+                isAnySelected
+                  ? 'border-border2 bg-bg2 shadow-sm'
+                  : 'border-border bg-bg hover:border-border2',
+              ].join(' ')}
             >
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
-                <span style={{ fontSize: '1.25rem' }}>{typeInfo.emoji}</span>
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem', flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text)' }}>
+              <div className="flex items-start gap-3">
+                {/* Type emoji badge */}
+                <div className="w-8 h-8 rounded-lg bg-bg3 flex items-center justify-center flex-shrink-0 text-sm">
+                  {typeInfo.emoji}
+                </div>
+
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
+                    <span className="text-sm font-semibold text-text leading-snug">
                       {angle.title}
                     </span>
-                    <span style={{
-                      fontSize: '0.7rem', padding: '2px 6px', borderRadius: '4px',
-                      backgroundColor: 'var(--bg)', color: 'var(--text3)', border: '1px solid var(--border)',
-                    }}>
+                    <span className="text-[10px] font-semibold text-text3 bg-bg3 border border-border rounded-md px-1.5 py-0.5 uppercase tracking-wide">
                       {typeInfo.label}
                     </span>
                   </div>
-                  <p style={{ fontSize: '0.8rem', color: 'var(--text2)', lineHeight: '1.4', marginBottom: '0.625rem' }}>
+                  <p className="text-xs text-text2 leading-relaxed mb-3">
                     {angle.summary}
                   </p>
 
-                  {/* Platform buttons with viral score */}
-                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  {/* Platform buttons */}
+                  <div className="flex gap-2 flex-wrap">
                     {angle.platforms.map((platform) => {
-                      const pInfo = PLATFORM_LABELS[platform] || { icon: '📝', color: '#666' }
                       const isSelected = (selected[angle.id] || []).includes(platform)
                       const viral = getViralScore(angle.type, platform)
-                      const badge = VIRAL_BADGE[viral]
+                      const isRec = viral === 'high'
+                      const recReason = getRecReason(angle.type, platform)
+
+                      const platformStyles = {
+                        linkedin: {
+                          selected: 'border-linkedin bg-linkedin/5 text-linkedin',
+                          idle: 'border-border text-text3 hover:border-linkedin/40 hover:text-linkedin',
+                        },
+                        x: {
+                          selected: 'border-xblack bg-xblack/5 text-xblack',
+                          idle: 'border-border text-text3 hover:border-xblack/30 hover:text-xblack',
+                        },
+                      }
+
+                      const styles = platformStyles[platform as 'linkedin' | 'x'] ?? {
+                        selected: 'border-accent bg-acl text-accent',
+                        idle: 'border-border text-text3',
+                      }
+
                       return (
-                        <button
-                          key={platform}
-                          onClick={() => togglePlatform(angle.id, platform)}
-                          style={{
-                            display: 'flex', alignItems: 'center', gap: '6px',
-                            padding: '5px 10px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 600,
-                            border: `1.5px solid ${isSelected ? pInfo.color : 'var(--border)'}`,
-                            backgroundColor: isSelected ? `${pInfo.color}10` : 'transparent',
-                            color: isSelected ? pInfo.color : 'var(--text3)',
-                            cursor: 'pointer', transition: 'all 0.15s',
-                          }}
-                        >
-                          {pInfo.icon} {platform === 'linkedin' ? 'LinkedIn' : 'X'}
-                          {viral === 'high' && (
-                            <span style={{
-                              fontSize: '0.65rem', padding: '1px 5px', borderRadius: '3px',
-                              backgroundColor: badge.bg, color: badge.color, fontWeight: 700,
-                            }}>
-                              REC
-                            </span>
+                        <div key={platform} className="relative group">
+                          <button
+                            onClick={() => togglePlatform(angle.id, platform)}
+                            className={[
+                              'flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-all duration-150',
+                              isSelected ? styles.selected : styles.idle,
+                            ].join(' ')}
+                          >
+                            {/* Platform icon */}
+                            {platform === 'linkedin' ? (
+                              <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6zM2 9h4v12H2z" />
+                                <circle cx="4" cy="4" r="2" />
+                              </svg>
+                            ) : (
+                              <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                              </svg>
+                            )}
+                            {platform === 'linkedin' ? 'LinkedIn' : 'X'}
+
+                            {/* REC badge */}
+                            {isRec && (
+                              <span
+                                className="inline-flex items-center gap-0.5 text-[9px] font-bold tracking-wide px-1.5 py-0.5 rounded-md bg-green/10 text-green border border-green/20 cursor-help"
+                                onMouseEnter={() => setTooltip(`${angle.id}-${platform}`)}
+                                onMouseLeave={() => setTooltip(null)}
+                              >
+                                ★ REC
+                              </span>
+                            )}
+                          </button>
+
+                          {/* Tooltip */}
+                          {isRec && tooltip === `${angle.id}-${platform}` && (
+                            <div className="absolute bottom-full left-0 mb-2 z-20 w-48 bg-text text-bg text-[10px] leading-snug rounded-lg px-3 py-2 shadow-lg pointer-events-none">
+                              {recReason}
+                              <div className="absolute top-full left-4 w-0 h-0 border-x-4 border-x-transparent border-t-4 border-t-text" />
+                            </div>
                           )}
-                        </button>
+                        </div>
                       )
                     })}
                   </div>
                 </div>
 
-                {/* Delete angle button */}
+                {/* Remove angle button */}
                 <button
                   onClick={() => removeAngle(angle.id)}
                   title="Remove this angle"
-                  style={{
-                    background: 'none', border: 'none', cursor: 'pointer',
-                    padding: '2px 6px', color: 'var(--text3)', fontSize: '0.875rem',
-                    lineHeight: 1, flexShrink: 0,
-                  }}
+                  className="flex-shrink-0 w-6 h-6 rounded-md flex items-center justify-center text-text3 hover:text-text hover:bg-bg3 transition-all duration-150"
                 >
-                  &#x2715;
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
                 </button>
               </div>
             </div>
           )
         })}
+
+        {angles.length === 0 && (
+          <div className="text-center py-8">
+            <p className="text-sm text-text3">All angles removed.</p>
+            <p className="text-xs text-text3 mt-1">Click Cancel to start over.</p>
+          </div>
+        )}
       </div>
 
-      {angles.length === 0 && (
-        <p style={{ textAlign: 'center', color: 'var(--text3)', fontSize: '0.875rem', padding: '1rem 0' }}>
-          All angles removed. Click Cancel to start over.
-        </p>
-      )}
-
-      <div style={{ display: 'flex', gap: '0.5rem' }}>
+      {/* Footer actions */}
+      <div className="px-4 pb-4 flex gap-2">
         <button
           onClick={onCancel}
           disabled={generating}
-          style={{
-            padding: '0.75rem 1.25rem', borderRadius: '8px',
-            border: '1px solid var(--border)', backgroundColor: 'transparent',
-            color: 'var(--text2)', fontSize: '0.875rem', fontWeight: 500, cursor: 'pointer',
-          }}
+          className="px-4 py-2.5 rounded-xl border border-border bg-transparent text-text2 text-sm font-medium hover:border-border2 hover:text-text transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Cancel
         </button>
         <button
           onClick={() => onGenerate(selections)}
           disabled={selectedCount === 0 || generating}
-          style={{
-            flex: 1, padding: '0.75rem', borderRadius: '8px', border: 'none',
-            backgroundColor: selectedCount > 0 && !generating ? 'var(--accent)' : 'var(--border)',
-            color: selectedCount > 0 && !generating ? '#fff' : 'var(--text3)',
-            fontSize: '0.875rem', fontWeight: 600,
-            cursor: selectedCount > 0 && !generating ? 'pointer' : 'not-allowed',
-          }}
+          className={[
+            'flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all duration-150',
+            selectedCount > 0 && !generating
+              ? 'bg-text text-bg hover:opacity-90 active:scale-[0.98] cursor-pointer'
+              : 'bg-bg3 text-text3 cursor-not-allowed',
+          ].join(' ')}
         >
-          {generating ? 'Generating...' : `Generate ${selectedCount} piece${selectedCount !== 1 ? 's' : ''}`}
+          {generating ? (
+            <span className="flex items-center justify-center gap-2">
+              <span className="w-4 h-4 rounded-full border-2 border-bg/30 border-t-bg animate-spin-fast" />
+              Generating…
+            </span>
+          ) : (
+            `Generate ${selectedCount} piece${selectedCount !== 1 ? 's' : ''}`
+          )}
         </button>
       </div>
     </div>

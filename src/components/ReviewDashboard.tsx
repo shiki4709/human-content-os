@@ -19,6 +19,44 @@ interface AnalysisState {
   totalPieces: number
 }
 
+// Skeleton shimmer card for loading state
+function SkeletonCard() {
+  return (
+    <div className="bg-bg2 rounded-2xl border border-border p-6 mb-4">
+      <div className="flex items-start justify-between mb-5 gap-4">
+        <div className="flex-1 space-y-2">
+          <div className="h-4 w-3/5 rounded-md bg-bg3 [background:linear-gradient(90deg,var(--bg3)_25%,var(--border)_50%,var(--bg3)_75%)] bg-[length:200%_100%] animate-[shimmer_1.5s_ease-in-out_infinite]" />
+          <div className="h-3 w-1/4 rounded-md bg-bg3 [background:linear-gradient(90deg,var(--bg3)_25%,var(--border)_50%,var(--bg3)_75%)] bg-[length:200%_100%] animate-[shimmer_1.5s_ease-in-out_infinite]" />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        {[0, 1].map((i) => (
+          <div key={i} className="h-36 rounded-xl bg-bg3 [background:linear-gradient(90deg,var(--bg3)_25%,var(--border)_50%,var(--bg3)_75%)] bg-[length:200%_100%] animate-[shimmer_1.5s_ease-in-out_infinite]" />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// Analyzing animation
+function AnalyzingBar({ url }: { url: string }) {
+  return (
+    <div className="bg-bg2 rounded-2xl border border-border px-5 py-4 mb-4 flex items-center gap-4">
+      <div className="w-8 h-8 rounded-lg bg-text flex items-center justify-center flex-shrink-0">
+        <span className="w-4 h-4 rounded-full border-2 border-bg/30 border-t-bg animate-spin-fast block" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold text-text">Analyzing article…</p>
+        <p className="text-xs text-text3 truncate mt-0.5">{url}</p>
+      </div>
+      {/* Progress shimmer bar */}
+      <div className="hidden sm:block w-24 h-1.5 rounded-full overflow-hidden bg-bg3">
+        <div className="h-full w-1/2 rounded-full bg-text/30 [background:linear-gradient(90deg,transparent_0%,var(--text)_50%,transparent_100%)] bg-[length:200%_100%] animate-[shimmer_1.2s_ease-in-out_infinite]" />
+      </div>
+    </div>
+  )
+}
+
 export default function ReviewDashboard() {
   const [items, setItems] = useState<ReviewItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -169,169 +207,176 @@ export default function ReviewDashboard() {
     }
   }
 
+  const anyPlatformEnabled = Object.values(platforms).some(Boolean)
+
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        backgroundColor: 'var(--bg)',
-      }}
-    >
+    <div className="min-h-screen bg-bg">
       {/* Header */}
-      <header
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '1rem 1.5rem',
-          borderBottom: '1px solid var(--border)',
-          backgroundColor: 'var(--bg)',
-          position: 'sticky',
-          top: 0,
-          zIndex: 10,
-        }}
-      >
-        <span
-          style={{
-            fontSize: '1.125rem',
-            fontWeight: 700,
-            color: 'var(--text)',
-            letterSpacing: '-0.02em',
-          }}
-        >
-          Human
-        </span>
-        <a
-          href="/dashboard/settings"
-          style={{
-            fontSize: '0.875rem',
-            color: 'var(--text2)',
-            textDecoration: 'none',
-            fontWeight: 500,
-          }}
-        >
-          Settings
-        </a>
+      <header className="sticky top-0 z-10 bg-bg/95 backdrop-blur-sm border-b border-border">
+        <div className="max-w-3xl mx-auto px-5 h-14 flex items-center justify-between">
+          <span className="font-serif text-xl text-text tracking-tight">Human</span>
+          <a
+            href="/dashboard/settings"
+            className="text-sm text-text2 font-medium hover:text-text transition-colors duration-150"
+          >
+            Settings
+          </a>
+        </div>
       </header>
 
-      <main
-        style={{
-          maxWidth: '860px',
-          margin: '0 auto',
-          padding: '2rem 1.5rem',
-        }}
-      >
-        {/* Platform toggles */}
-        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
-          {[
-            { id: 'linkedin', label: 'LinkedIn', icon: '🔵' },
-            { id: 'x', label: 'X', icon: '⬛' },
-          ].map((p) => (
-            <button
-              key={p.id}
-              onClick={() => setPlatforms((prev) => ({ ...prev, [p.id]: !prev[p.id] }))}
-              style={{
-                display: 'flex', alignItems: 'center', gap: '6px',
-                padding: '6px 14px', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 600,
-                border: `1.5px solid ${platforms[p.id] ? 'var(--accent)' : 'var(--border)'}`,
-                backgroundColor: platforms[p.id] ? 'rgba(79, 70, 229, 0.06)' : 'transparent',
-                color: platforms[p.id] ? 'var(--accent)' : 'var(--text3)',
-                cursor: 'pointer', transition: 'all 0.15s',
-              }}
-            >
-              {p.icon} {p.label}
-            </button>
-          ))}
-        </div>
+      <main className="max-w-3xl mx-auto px-5 pt-8 pb-16">
 
-        {/* URL input bar */}
-        <div style={{ marginBottom: '2rem' }}>
-          <div
-            style={{
-              display: 'flex',
-              gap: '0.5rem',
-            }}
-          >
-            <input
-              type="url"
-              placeholder="Paste a URL to generate content…"
-              value={urlInput}
-              onChange={(e) => {
-                setUrlInput(e.target.value)
-                setUrlError(null)
-              }}
-              onKeyDown={(e) => e.key === 'Enter' && handleAddUrl()}
-              style={{
-                flex: 1,
-                padding: '0.625rem 1rem',
-                borderRadius: '8px',
-                border: '1px solid var(--border)',
-                backgroundColor: 'var(--bg2)',
-                color: 'var(--text)',
-                fontSize: '0.875rem',
-                outline: 'none',
-                fontFamily: 'inherit',
-              }}
-            />
-            <button
-              onClick={handleAddUrl}
-              disabled={!urlInput.trim() || addingUrl}
-              style={{
-                padding: '0.625rem 1rem',
-                borderRadius: '8px',
-                border: 'none',
-                backgroundColor: urlInput.trim() && !addingUrl ? 'var(--accent)' : 'var(--border)',
-                color: urlInput.trim() && !addingUrl ? '#fff' : 'var(--text3)',
-                fontSize: '0.875rem',
-                fontWeight: 600,
-                cursor: urlInput.trim() && !addingUrl ? 'pointer' : 'not-allowed',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {addingUrl ? 'Analyzing...' : 'Analyze'}
-            </button>
+        {/* === URL INPUT SECTION === */}
+        <section className="mb-8">
+          {/* Platform toggles */}
+          <div className="flex items-center gap-2 mb-4">
+            <span className="text-xs text-text3 font-medium mr-1">Generate for:</span>
+            {[
+              { id: 'linkedin', label: 'LinkedIn', activeClass: 'border-linkedin bg-linkedin/5 text-linkedin', inactiveClass: 'border-border text-text3 hover:border-border2 hover:text-text2' },
+              { id: 'x', label: 'X', activeClass: 'border-xblack bg-xblack/5 text-xblack', inactiveClass: 'border-border text-text3 hover:border-border2 hover:text-text2' },
+            ].map((p) => (
+              <button
+                key={p.id}
+                onClick={() => setPlatforms((prev) => ({ ...prev, [p.id]: !prev[p.id] }))}
+                className={[
+                  'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all duration-150 select-none',
+                  platforms[p.id] ? p.activeClass : p.inactiveClass,
+                ].join(' ')}
+              >
+                {p.id === 'linkedin' ? (
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6zM2 9h4v12H2z" />
+                    <circle cx="4" cy="4" r="2" />
+                  </svg>
+                ) : (
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                  </svg>
+                )}
+                {p.label}
+              </button>
+            ))}
           </div>
+
+          {/* URL input card */}
+          <div className={[
+            'rounded-2xl border transition-all duration-200',
+            urlError ? 'border-red/40 bg-redl/30' : 'border-border bg-bg2',
+          ].join(' ')}>
+            <div className="flex items-center gap-0 p-1.5">
+              {/* URL icon */}
+              <div className="pl-3 pr-2 text-text3 flex-shrink-0">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                  <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                </svg>
+              </div>
+              <input
+                type="url"
+                placeholder="Paste an article URL to generate content…"
+                value={urlInput}
+                onChange={(e) => {
+                  setUrlInput(e.target.value)
+                  setUrlError(null)
+                }}
+                onKeyDown={(e) => e.key === 'Enter' && handleAddUrl()}
+                disabled={addingUrl}
+                className="flex-1 py-3 pr-2 bg-transparent text-text text-sm placeholder:text-text3 outline-none font-[inherit] disabled:opacity-50"
+              />
+              <button
+                onClick={handleAddUrl}
+                disabled={!urlInput.trim() || addingUrl || !anyPlatformEnabled}
+                className={[
+                  'flex-shrink-0 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-150',
+                  urlInput.trim() && !addingUrl && anyPlatformEnabled
+                    ? 'bg-text text-bg hover:opacity-90 active:scale-[0.97] cursor-pointer'
+                    : 'bg-bg3 text-text3 cursor-not-allowed',
+                ].join(' ')}
+              >
+                Analyze
+              </button>
+            </div>
+          </div>
+
+          {/* Error message */}
           {urlError && (
-            <p style={{ color: 'rgb(239,68,68)', fontSize: '0.8rem', marginTop: '0.5rem' }}>
-              {urlError}
+            <div className="flex items-center gap-2 mt-2.5 px-1">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-red flex-shrink-0">
+                <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+              </svg>
+              <p className="text-xs text-red font-medium">{urlError}</p>
+            </div>
+          )}
+
+          {/* Platform warning */}
+          {!anyPlatformEnabled && (
+            <p className="text-xs text-gold font-medium mt-2.5 px-1">
+              Select at least one platform to generate content.
             </p>
           )}
-        </div>
+        </section>
+
+        {/* Analyzing in-progress state */}
+        {addingUrl && <AnalyzingBar url={urlInput} />}
 
         {/* Angle selector (after analysis) */}
         {analysis && (
-          <AngleSelector
-            title={analysis.title}
-            summary={analysis.summary}
-            angles={analysis.angles}
-            totalPieces={analysis.totalPieces}
-            onGenerate={handleGenerateAngles}
-            onCancel={() => { setAnalysis(null); setUrlInput('') }}
-            generating={generating}
-          />
+          <div className="mb-6 animate-fade-up">
+            <AngleSelector
+              title={analysis.title}
+              summary={analysis.summary}
+              angles={analysis.angles}
+              totalPieces={analysis.totalPieces}
+              onGenerate={handleGenerateAngles}
+              onCancel={() => { setAnalysis(null); setUrlInput('') }}
+              generating={generating}
+            />
+          </div>
         )}
 
         {/* Content list */}
         {loading ? (
-          <div style={{ textAlign: 'center', padding: '4rem 0', color: 'var(--text3)' }}>
-            Loading…
+          <div>
+            <SkeletonCard />
+            <SkeletonCard />
           </div>
-        ) : items.length === 0 ? (
-          <div
-            style={{
-              textAlign: 'center',
-              padding: '5rem 2rem',
-              color: 'var(--text3)',
-            }}
-          >
-            <p style={{ fontSize: '1rem', marginBottom: '0.5rem', color: 'var(--text2)' }}>
-              No content yet
+        ) : items.length === 0 && !analysis ? (
+          /* === EMPTY STATE === */
+          <div className="flex flex-col items-center justify-center py-20 text-center animate-fade-up">
+            {/* Illustration */}
+            <div className="w-20 h-20 rounded-2xl bg-bg2 border border-border flex items-center justify-center mb-6 shadow-sm">
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-text3">
+                <rect x="3" y="3" width="18" height="18" rx="3" />
+                <path d="M3 9h18" />
+                <path d="M9 21V9" />
+              </svg>
+            </div>
+
+            <h2 className="text-lg font-semibold text-text mb-2 tracking-tight">
+              Your content queue is empty
+            </h2>
+            <p className="text-sm text-text2 max-w-xs leading-relaxed mb-6">
+              Paste any article, newsletter, or blog URL above — Human will turn it into LinkedIn posts and X threads ready to publish.
             </p>
-            <p style={{ fontSize: '0.875rem' }}>
-              Paste any article or post link above to get started.
-            </p>
+
+            {/* Example chips */}
+            <div className="flex flex-wrap gap-2 justify-center">
+              {[
+                'techcrunch.com article',
+                'Substack newsletter',
+                'Harvard Business Review',
+              ].map((example) => (
+                <span
+                  key={example}
+                  className="text-xs text-text3 bg-bg2 border border-border rounded-full px-3 py-1.5"
+                >
+                  {example}
+                </span>
+              ))}
+            </div>
           </div>
         ) : (
-          <div>
+          <div className="space-y-4">
             {items.map((item) => (
               <ContentCard
                 key={item.source.id}
