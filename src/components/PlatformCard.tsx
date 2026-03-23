@@ -116,6 +116,7 @@ function countWords(text: string): number {
 }
 
 export default function PlatformCard({ content, onPublish, onRefine, onDeleteContent, onRegenerate }: PlatformCardProps) {
+  const [expanded, setExpanded] = useState(false)
   const [editing, setEditing] = useState(false)
   const [editedText, setEditedText] = useState(content.content)
   const [refineInstruction, setRefineInstruction] = useState('')
@@ -311,16 +312,64 @@ export default function PlatformCard({ content, onPublish, onRefine, onDeleteCon
             onChange={(e) => setEditedText(e.target.value)}
             className="w-full min-h-[160px] p-3 rounded-lg border border-border bg-bg text-text text-sm leading-relaxed resize-y outline-none focus:border-border2 font-[inherit] box-border transition-colors duration-150"
           />
-        ) : isX && tweets.length > 1 ? (
-          <div className="space-y-0">
-            {tweets.map((tweet, i) => (
-              <TweetCard key={i} text={tweet} index={i} total={tweets.length} />
-            ))}
-          </div>
         ) : (
-          <p className="text-sm text-text leading-relaxed whitespace-pre-wrap">
-            {content.content}
-          </p>
+          <>
+            {/* Collapsed preview or full content */}
+            <div
+              className={!expanded && !isPublished ? 'cursor-pointer' : ''}
+              onClick={() => !expanded && !isPublished && setExpanded(true)}
+            >
+              {isX && tweets.length > 1 ? (
+                expanded ? (
+                  <div className="space-y-0">
+                    {tweets.map((tweet, i) => (
+                      <TweetCard key={i} text={tweet} index={i} total={tweets.length} />
+                    ))}
+                  </div>
+                ) : (
+                  /* Collapsed: show first tweet preview */
+                  <div>
+                    <p className="text-sm text-text leading-relaxed line-clamp-3">{tweets[0]}</p>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setExpanded(true) }}
+                      className="text-xs text-accent font-medium mt-2 hover:underline"
+                    >
+                      Show full thread ({tweets.length} tweets) &darr;
+                    </button>
+                  </div>
+                )
+              ) : expanded || isPublished ? (
+                <p className="text-sm text-text leading-relaxed whitespace-pre-wrap">
+                  {content.content}
+                </p>
+              ) : (
+                /* Collapsed: show 3-line preview */
+                <div>
+                  <p className="text-sm text-text leading-relaxed whitespace-pre-wrap line-clamp-3">
+                    {content.content}
+                  </p>
+                  {content.content.length > 200 && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setExpanded(true) }}
+                      className="text-xs text-accent font-medium mt-2 hover:underline"
+                    >
+                      Show full post &darr;
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Collapse button when expanded */}
+            {expanded && !isPublished && (
+              <button
+                onClick={() => setExpanded(false)}
+                className="text-xs text-text3 font-medium mt-2 hover:text-text hover:underline"
+              >
+                Collapse &uarr;
+              </button>
+            )}
+          </>
         )}
 
         {/* Error */}
@@ -333,12 +382,12 @@ export default function PlatformCard({ content, onPublish, onRefine, onDeleteCon
           </div>
         )}
 
-        {/* Always-visible Refine bar */}
-        {!isPublished && (
+        {/* Refine bar — only show when expanded or editing */}
+        {!isPublished && (expanded || editing) && (
           <div className="flex gap-1.5 mt-3">
             <input
               type="text"
-              placeholder="Refine with AI… make it punchier, add a hook"
+              placeholder="Refine with AI…"
               value={refineInstruction}
               onChange={(e) => setRefineInstruction(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleRefine()}
@@ -357,21 +406,14 @@ export default function PlatformCard({ content, onPublish, onRefine, onDeleteCon
             >
               {refining ? (
                 <span className="w-3 h-3 rounded-full border-2 border-bg/30 border-t-bg animate-spin-fast block" />
-              ) : (
-                <>
-                  <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
-                  </svg>
-                  Refine
-                </>
-              )}
+              ) : 'Refine'}
             </button>
           </div>
         )}
       </div>
 
-      {/* Action footer */}
-      {!isPublished && (
+      {/* Action footer — only when expanded */}
+      {!isPublished && (expanded || editing) && (
         <div className="px-3.5 pb-3.5 flex gap-2">
           <button
             onClick={() => setEditing((v) => !v)}
