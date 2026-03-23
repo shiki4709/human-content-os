@@ -179,6 +179,72 @@ export default function ReviewDashboard() {
     }
   }
 
+  async function handleDeleteContent(id: string) {
+    const res = await fetch('/api/review-content/delete-one', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    })
+    if (res.ok) {
+      setItems((prev) =>
+        prev
+          .map((group) => ({
+            ...group,
+            content: group.content.filter((c) => c.id !== id),
+          }))
+          // Remove the whole group if no content rows remain
+          .filter((group) => group.content.length > 0)
+      )
+    }
+  }
+
+  async function handleRegenerate(id: string) {
+    // Find which content row this is so we can get source + platform
+    const item = items.flatMap((i) => i.content).find((c) => c.id === id)
+    const group = items.find((i) => i.content.some((c) => c.id === id))
+    if (!item || !group) return
+
+    // Get the source URL from the source meta
+    const sourceMeta = group.source.meta as Record<string, unknown> | null
+    const url = (sourceMeta?.url as string) ?? null
+    if (!url) return
+
+    // Build the angle from source meta (best-effort)
+    const angle = {
+      id: (sourceMeta?.angle_id as string) ?? 'regen',
+      title: group.source.label,
+      type: (sourceMeta?.angle_type as string) ?? 'insight',
+      description: '',
+      hook: '',
+      platforms: [item.platform],
+    }
+
+    // Delete the old row first
+    await fetch('/api/review-content/delete-one', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    })
+
+    // Remove from local state optimistically
+    setItems((prev) =>
+      prev.map((g) => ({
+        ...g,
+        content: g.content.filter((c) => c.id !== id),
+      }))
+    )
+
+    // Re-generate
+    await fetch('/api/generate-angle', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url, angle, platform: item.platform }),
+    })
+
+    // Refresh full list so new row appears
+    await fetchItems()
+  }
+
   async function handleRefine(id: string, instruction: string) {
     const item = items.flatMap((i) => i.content).find((c) => c.id === id)
     if (!item) return
@@ -385,6 +451,8 @@ export default function ReviewDashboard() {
                 onPublish={handlePublish}
                 onRefine={handleRefine}
                 onDelete={handleDelete}
+                onDeleteContent={handleDeleteContent}
+                onRegenerate={handleRegenerate}
               />
             ))}
           </div>

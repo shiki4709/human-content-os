@@ -9,6 +9,8 @@ interface ContentCardProps {
   onPublish: (id: string) => Promise<void>
   onRefine: (id: string, instruction: string) => Promise<void>
   onDelete: (sourceId: string) => Promise<void>
+  onDeleteContent?: (id: string) => Promise<void>
+  onRegenerate?: (id: string) => Promise<void>
 }
 
 function timeAgo(dateStr: string): string {
@@ -21,7 +23,7 @@ function timeAgo(dateStr: string): string {
   return `${days}d ago`
 }
 
-export default function ContentCard({ source, content, onPublish, onRefine, onDelete }: ContentCardProps) {
+export default function ContentCard({ source, content, onPublish, onRefine, onDelete, onDeleteContent, onRegenerate }: ContentCardProps) {
   const allPublished = content.length > 0 && content.every((c) => c.status === 'published')
   const sourceDate = source.rss_published_at ?? source.created_at
 
@@ -59,7 +61,7 @@ export default function ContentCard({ source, content, onPublish, onRefine, onDe
           )}
           <button
             onClick={() => onDelete(source.id)}
-            title="Delete"
+            title="Delete source"
             className="w-7 h-7 rounded-lg flex items-center justify-center text-text3 hover:text-text hover:bg-bg3 transition-all duration-150"
           >
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
@@ -82,6 +84,8 @@ export default function ContentCard({ source, content, onPublish, onRefine, onDe
                 content={item}
                 onPublish={onPublish}
                 onRefine={onRefine}
+                onDeleteContent={onDeleteContent}
+                onRegenerate={onRegenerate}
               />
             ))}
           </div>
