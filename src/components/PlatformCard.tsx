@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import type { GeneratedContent } from '@/types'
+import MediaPicker from './MediaPicker'
 
 interface PlatformCardProps {
   content: GeneratedContent
@@ -9,6 +10,7 @@ interface PlatformCardProps {
   onRefine: (id: string, instruction: string) => Promise<void>
   onDeleteContent?: (id: string) => Promise<void>
   onRegenerate?: (id: string) => Promise<void>
+  sourceUrl?: string
 }
 
 const PLATFORM_META: Record<string, { label: string; color: string; bgClass: string; borderClass: string; textClass: string; icon: React.ReactNode }> = {
@@ -115,7 +117,13 @@ function countWords(text: string): number {
   return text.trim().split(/\s+/).filter(Boolean).length
 }
 
-export default function PlatformCard({ content, onPublish, onRefine, onDeleteContent, onRegenerate }: PlatformCardProps) {
+function extractStatText(text: string): string | undefined {
+  // Pull first number/percentage/stat from content
+  const match = text.match(/(\d[\d,]*(?:\.\d+)?(?:\s*[%x×]|\s*(?:million|billion|thousand|k|M|B))?)/)
+  return match ? match[1].trim() : undefined
+}
+
+export default function PlatformCard({ content, onPublish, onRefine, onDeleteContent, onRegenerate, sourceUrl }: PlatformCardProps) {
   const [expanded, setExpanded] = useState(false)
   const [editing, setEditing] = useState(false)
   const [editedText, setEditedText] = useState(content.content)
@@ -126,6 +134,7 @@ export default function PlatformCard({ content, onPublish, onRefine, onDeleteCon
   const [quickCopied, setQuickCopied] = useState(false)
   const [regenerating, setRegenerating] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [selectedMedia, setSelectedMedia] = useState<string | null>(null)
 
   const meta = PLATFORM_META[content.platform] ?? {
     label: content.platform,
@@ -370,6 +379,18 @@ export default function PlatformCard({ content, onPublish, onRefine, onDeleteCon
               </button>
             )}
           </>
+        )}
+
+        {/* Media picker — show when expanded and not published */}
+        {expanded && !isPublished && sourceUrl && (
+          <div className="mt-3 pt-3 border-t border-border">
+            <MediaPicker
+              sourceUrl={sourceUrl}
+              statText={extractStatText(content.content)}
+              selectedMedia={selectedMedia}
+              onSelect={setSelectedMedia}
+            />
+          </div>
         )}
 
         {/* Error */}
