@@ -98,8 +98,10 @@ export default function MediaPicker({ sourceUrl, statText, selectedMedia, onSele
       )}
 
       {/* OG / article images */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
       {!loading &&
         images.map((img) => (
+          // eslint-disable-next-line @next/next/no-img-element
           <img
             key={img.url}
             src={img.url}
@@ -107,7 +109,6 @@ export default function MediaPicker({ sourceUrl, statText, selectedMedia, onSele
             className={thumbClass(img.url)}
             onClick={() => handleThumbClick(img.url)}
             onError={(e) => {
-              // Hide broken images
               ;(e.currentTarget as HTMLImageElement).style.display = 'none'
             }}
           />
@@ -115,6 +116,7 @@ export default function MediaPicker({ sourceUrl, statText, selectedMedia, onSele
 
       {/* Stat card thumbnail */}
       {statCardUrl && (
+        // eslint-disable-next-line @next/next/no-img-element
         <img
           src={statCardUrl}
           alt="Stat card"
