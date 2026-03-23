@@ -21,10 +21,21 @@ STYLE:
 - Vulnerable > polished. Personal stories get 3-5x more reach than informational posts.
 - Include one specific number or data point if possible.
 - Conversational tone — write like you're texting a smart colleague, not writing a press release.
-- No hashtags (they're dead on LinkedIn).
 - NEVER include links in the post body (LinkedIn suppresses them). Put links in comments.
 - No corporate jargon. No "leveraging synergies." No "thought leadership."
-- End with a question that invites long comments, not one-word replies.`,
+- End with a question that invites long comments, not one-word replies.
+
+HASHTAGS (at the very end of the post, after a blank line):
+- Add exactly 3-5 hashtags. Mix: 2 broad industry tags + 1-2 niche topic tags.
+- Broad examples: #AI, #Marketing, #Leadership, #Startups, #ProductManagement
+- Niche examples: #ContentStrategy, #B2BSaaS, #CreatorEconomy, #AIAgents
+- Never exceed 5. Never use generic tags like #Success or #FollowMe.
+
+MENTIONS:
+- If the source article mentions a specific person, company, or creator by name, reference them with @Name in the post body.
+- Maximum 3 mentions. Only mention people/companies directly relevant to the content.
+- Use the "give credit" pattern: "Inspired by @Person's take on..." or "As @Person put it..."
+- This increases engagement because tagged people often respond, which boosts distribution.`,
 
   x: `Write a Twitter/X thread that gets bookmarked and reposted.
 
@@ -57,10 +68,20 @@ FINAL TWEET (CTA):
 
 RULES:
 - No external links in any tweet (algorithm penalty). Links go in replies.
-- No hashtags except optionally 1 in the last tweet.
 - Use arrow, checkmark, or brain emoji as bullet points — max 1-2 emoji per tweet.
 - ASCII punctuation only. Never use em dashes. Use regular dashes.
-- NEVER be generic. Every line should have a specific insight, number, or example.`,
+- NEVER be generic. Every line should have a specific insight, number, or example.
+
+HASHTAGS:
+- Use 1-2 hashtags ONLY in the hook tweet (tweet 1), placed inline naturally.
+- Example: "I studied 500 #AI startups. Here's what separates winners from losers:"
+- Never stack hashtags at the end. Never use more than 2 total across the thread.
+
+MENTIONS:
+- If the source article references a specific person or account, mention them with @handle in the relevant tweet.
+- Quote tweet format: when referencing someone's take, use "As @handle said:" or ".@handle nailed this:"
+- Maximum 2 mentions across the entire thread. Only mention people directly relevant.
+- This triggers notifications and if they engage, the algorithm massively boosts reach (reply from original author = 150x weight of a like).`,
 }
 
 async function callClaude(systemPrompt: string, userPrompt: string): Promise<string> {
@@ -99,6 +120,7 @@ export interface ContentAngle {
   title: string
   summary: string
   platforms: string[] // which platforms this angle works best on
+  mentions: string[] // people/companies mentioned that could be tagged
 }
 
 export interface AnalysisResult {
@@ -135,10 +157,13 @@ Respond in this exact JSON format (no markdown, no code fences):
       "type": "key_insight",
       "title": "Short title for this angle (max 10 words)",
       "summary": "2-3 sentences describing what this content piece would cover. Must reference specific details from the article.",
-      "platforms": ["linkedin", "x"]
+      "platforms": ["linkedin", "x"],
+      "mentions": ["@PersonName", "@CompanyName"]
     }
   ]
 }
+
+For each angle, also list any specific people, companies, or accounts mentioned in the article that could be @tagged in the post. If no specific names are mentioned, use an empty array.
 
 Only return angles that are DIRECTLY supported by the article text. Quality over quantity.`
 
@@ -162,7 +187,7 @@ export async function analyzeArticle(
     return {
       article_summary: sourceTitle,
       angles: [
-        { id: '1', type: 'key_insight', title: sourceTitle, summary: 'Full article repurpose', platforms: ['linkedin', 'x'] },
+        { id: '1', type: 'key_insight', title: sourceTitle, summary: 'Full article repurpose', platforms: ['linkedin', 'x'], mentions: [] },
       ],
       total_pieces: 2,
     }

@@ -170,9 +170,20 @@ export default function AngleSelector({ title, summary, angles: initialAngles, o
                       {typeInfo.label}
                     </span>
                   </div>
-                  <p className="text-xs text-text2 leading-relaxed mb-3">
+                  <p className="text-xs text-text2 leading-relaxed mb-2">
                     {angle.summary}
                   </p>
+                  {angle.mentions && angle.mentions.length > 0 && (
+                    <div className="flex items-center gap-1.5 mb-3 flex-wrap">
+                      <span className="text-[10px] text-text3">Tag:</span>
+                      {angle.mentions.map((m) => (
+                        <span key={m} className="text-[10px] font-semibold text-accent bg-acl border border-acb rounded-md px-1.5 py-0.5">
+                          {m}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  {(!angle.mentions || angle.mentions.length === 0) && <div className="mb-3" />}
 
                   {/* Platform buttons */}
                   <div className="flex gap-2 flex-wrap">
