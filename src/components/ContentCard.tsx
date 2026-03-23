@@ -23,48 +23,115 @@ function timeAgo(dateStr: string): string {
   return `${days}d ago`
 }
 
+// Angle type metadata
+const ANGLE_META: Record<string, { emoji: string; label: string }> = {
+  key_insight: { emoji: '💡', label: 'Key Insight' },
+  story: { emoji: '📖', label: 'Story' },
+  data_point: { emoji: '📊', label: 'Data Point' },
+  framework: { emoji: '🔧', label: 'Framework' },
+  contrarian_take: { emoji: '🔥', label: 'Contrarian Take' },
+  how_to: { emoji: '📋', label: 'How-To' },
+  quote: { emoji: '💬', label: 'Quote' },
+}
+
+// Viral potential by angle type + platform
+const VIRAL_SCORES: Record<string, Record<string, { score: number; label: string; color: string }>> = {
+  linkedin: {
+    story:           { score: 95, label: 'Very High', color: 'text-green' },
+    key_insight:     { score: 85, label: 'High', color: 'text-green' },
+    data_point:      { score: 80, label: 'High', color: 'text-green' },
+    contrarian_take: { score: 65, label: 'Medium', color: 'text-gold' },
+    framework:       { score: 60, label: 'Medium', color: 'text-gold' },
+    how_to:          { score: 55, label: 'Medium', color: 'text-gold' },
+    quote:           { score: 35, label: 'Low', color: 'text-text3' },
+  },
+  x: {
+    contrarian_take: { score: 90, label: 'Very High', color: 'text-green' },
+    data_point:      { score: 85, label: 'High', color: 'text-green' },
+    framework:       { score: 80, label: 'High', color: 'text-green' },
+    how_to:          { score: 80, label: 'High', color: 'text-green' },
+    key_insight:     { score: 65, label: 'Medium', color: 'text-gold' },
+    quote:           { score: 55, label: 'Medium', color: 'text-gold' },
+    story:           { score: 40, label: 'Low', color: 'text-text3' },
+  },
+}
+
+function getViralInfo(platform: string, angleType: string) {
+  return VIRAL_SCORES[platform]?.[angleType] ?? { score: 50, label: 'Medium', color: 'text-text3' }
+}
+
 export default function ContentCard({ source, content, onPublish, onRefine, onDelete, onDeleteContent, onRegenerate }: ContentCardProps) {
   const allPublished = content.length > 0 && content.every((c) => c.status === 'published')
   const sourceDate = source.rss_published_at ?? source.created_at
+  const meta = source.meta as Record<string, unknown> | null
+  const angleType = (meta?.angle_type as string) || ''
+  const angleMeta = ANGLE_META[angleType]
+
+  // Parse the title — if it contains " — " it's "Article Title — Angle Title"
+  const labelParts = source.label.split(' — ')
+  const articleTitle = labelParts.length > 1 ? labelParts[0] : source.label
+  const angleTitle = labelParts.length > 1 ? labelParts[1] : null
+
+  // Sort content by viral potential (highest first)
+  const sortedContent = [...content].sort((a, b) => {
+    const aScore = getViralInfo(a.platform, angleType).score
+    const bScore = getViralInfo(b.platform, angleType).score
+    return bScore - aScore
+  })
 
   return (
-    <div className="bg-bg rounded-2xl border border-border shadow-sm overflow-hidden animate-fade-up">
+    <div className="bg-bg rounded-2xl border border-border shadow-sm overflow-hidden animate-fade-up mb-4">
       {/* Source header */}
-      <div className="flex items-start justify-between px-5 py-4 border-b border-border bg-bg2 gap-4">
+      <div className="flex items-start justify-between px-5 py-4 border-b border-border bg-bg2 gap-3">
         <div className="flex items-start gap-3 flex-1 min-w-0">
-          {/* Source icon */}
-          <div className="w-8 h-8 rounded-lg bg-bg3 flex items-center justify-center flex-shrink-0 mt-0.5">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text3">
-              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-            </svg>
+          {/* Angle icon */}
+          <div className="w-9 h-9 rounded-xl bg-bg3 flex items-center justify-center flex-shrink-0 text-base">
+            {angleMeta?.emoji || '🔗'}
           </div>
 
           <div className="flex-1 min-w-0">
-            <h3 className="text-sm font-semibold text-text leading-snug truncate">
-              {source.label}
-            </h3>
-            <p className="text-xs text-text3 mt-0.5">
-              From Substack · {timeAgo(sourceDate)}
-            </p>
+            {/* Angle title (what this post is about) */}
+            {angleTitle ? (
+              <>
+                <h3 className="text-sm font-semibold text-text leading-snug">
+                  {angleTitle}
+                </h3>
+                <p className="text-[11px] text-text3 mt-0.5 truncate">
+                  {angleMeta && (
+                    <span className="font-medium">{angleMeta.label}</span>
+                  )}
+                  {angleMeta && ' · '}
+                  {articleTitle} · {timeAgo(sourceDate)}
+                </p>
+              </>
+            ) : (
+              <>
+                <h3 className="text-sm font-semibold text-text leading-snug truncate">
+                  {source.label}
+                </h3>
+                <p className="text-[11px] text-text3 mt-0.5">
+                  {timeAgo(sourceDate)}
+                </p>
+              </>
+            )}
           </div>
         </div>
 
         <div className="flex items-center gap-2 flex-shrink-0">
           {allPublished && (
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-greenl border border-greenb">
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="text-green">
+            <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-greenl border border-greenb">
+              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="text-green">
                 <polyline points="20 6 9 17 4 12" />
               </svg>
-              <span className="text-[11px] font-semibold text-green">All published</span>
+              <span className="text-[10px] font-semibold text-green">Done</span>
             </div>
           )}
           <button
             onClick={() => onDelete(source.id)}
-            title="Delete source"
+            title="Delete"
             className="w-7 h-7 rounded-lg flex items-center justify-center text-text3 hover:text-text hover:bg-bg3 transition-all duration-150"
           >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
               <line x1="18" y1="6" x2="6" y2="18" />
               <line x1="6" y1="6" x2="18" y2="18" />
             </svg>
@@ -72,22 +139,37 @@ export default function ContentCard({ source, content, onPublish, onRefine, onDe
         </div>
       </div>
 
-      {/* Platform cards */}
+      {/* Platform cards with viral indicators */}
       <div className="p-4">
         {content.length === 0 ? (
           <p className="text-xs text-text3 text-center py-6">No generated content yet.</p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {content.map((item) => (
-              <PlatformCard
-                key={item.id}
-                content={item}
-                onPublish={onPublish}
-                onRefine={onRefine}
-                onDeleteContent={onDeleteContent}
-                onRegenerate={onRegenerate}
-              />
-            ))}
+            {sortedContent.map((item) => {
+              const viral = getViralInfo(item.platform, angleType)
+              return (
+                <div key={item.id}>
+                  {/* Viral potential indicator */}
+                  {angleType && (
+                    <div className="flex items-center justify-between mb-1.5 px-1">
+                      <span className={['text-[10px] font-semibold', viral.color].join(' ')}>
+                        {viral.score >= 80 ? '🔥' : viral.score >= 60 ? '👍' : '—'} {viral.label} viral potential
+                      </span>
+                      <span className="text-[10px] text-text3">
+                        {viral.score}/100
+                      </span>
+                    </div>
+                  )}
+                  <PlatformCard
+                    content={item}
+                    onPublish={onPublish}
+                    onRefine={onRefine}
+                    onDeleteContent={onDeleteContent}
+                    onRegenerate={onRegenerate}
+                  />
+                </div>
+              )
+            })}
           </div>
         )}
       </div>
