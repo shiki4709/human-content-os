@@ -284,10 +284,10 @@ export default function PlatformCard({ content, onPublish, onRefine, onDeleteCon
               ].join(' ')}>
                 {viralScore.overall}
               </span>
-              <div className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 bg-text text-bg text-[10px] leading-snug rounded-lg px-3 py-2 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-20">
-                <p className="font-medium mb-1">{viralScore.verdict}</p>
-                <p className="text-bg/70">💡 {viralScore.improvement}</p>
-                <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-text" />
+              <div className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-60 text-[11px] leading-snug rounded-lg px-3 py-2.5 shadow-xl opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-20" style={{ backgroundColor: '#1a1a1a', color: '#f5f5f5' }}>
+                <p className="font-medium mb-1.5">{viralScore.verdict}</p>
+                <p style={{ color: '#a3a3a3' }}>💡 {viralScore.improvement}</p>
+                <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent" style={{ borderTopColor: '#1a1a1a' }} />
               </div>
             </div>
           )}
