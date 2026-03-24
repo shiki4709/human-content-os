@@ -84,7 +84,7 @@ MENTIONS:
 - This triggers notifications and if they engage, the algorithm massively boosts reach (reply from original author = 150x weight of a like).`,
 }
 
-async function callClaude(systemPrompt: string, userPrompt: string): Promise<string> {
+async function callClaude(systemPrompt: string, userPrompt: string, maxTokens = 4000): Promise<string> {
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) throw new Error('ANTHROPIC_API_KEY not configured')
 
@@ -97,7 +97,7 @@ async function callClaude(systemPrompt: string, userPrompt: string): Promise<str
     },
     body: JSON.stringify({
       model: 'claude-sonnet-4-5-20250929',
-      max_tokens: 2000,
+      max_tokens: maxTokens,
       system: systemPrompt,
       messages: [{ role: 'user', content: userPrompt }],
     }),
@@ -182,7 +182,17 @@ export async function analyzeArticle(
 
   try {
     // Clean up potential markdown code fences
-    const cleaned = result.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+    let cleaned = result.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+
+    // If JSON is truncated (common with low max_tokens), try to fix it
+    if (!cleaned.endsWith('}')) {
+      // Find the last complete angle object
+      const lastCompleteAngle = cleaned.lastIndexOf('}')
+      if (lastCompleteAngle > 0) {
+        cleaned = cleaned.slice(0, lastCompleteAngle + 1) + ']}'
+      }
+    }
+
     const parsed = JSON.parse(cleaned) as AnalysisResult
     parsed.total_pieces = parsed.angles.reduce((sum, a) => sum + a.platforms.length, 0)
     return parsed

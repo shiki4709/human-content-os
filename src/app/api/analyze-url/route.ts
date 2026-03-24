@@ -99,6 +99,7 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({
     title,
     content_length: content.length,
+    content_preview: content.slice(0, 200),
     analysis,
   })
 }
