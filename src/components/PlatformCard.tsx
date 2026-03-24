@@ -123,30 +123,50 @@ function IconButton({
   )
 }
 
+// Clean TWEET_N: / Tweet N: prefixes from text
+function cleanTweetPrefix(text: string): string {
+  return text
+    .replace(/^TWEET_?\d+\s*[:\.]\s*/i, '')
+    .replace(/^Tweet\s*\d+\s*[:\.]\s*/i, '')
+    .trim()
+}
+
 // Parse X thread content — try multiple formats
 function parseThread(text: string): string[] {
-  // Format 1: --- separator
-  let tweets = text.split(/\n?---\n?/).map((t) => t.trim()).filter(Boolean)
-  if (tweets.length > 1) return tweets
+  let tweets: string[]
 
-  // Format 2: TWEET_1: text | TWEET_2: text (pipe separated)
-  if (text.includes('TWEET_1') || text.includes('Tweet 1')) {
-    tweets = text.split('|').map((t) => t.replace(/^TWEET_\d+:\s*/i, '').replace(/^Tweet\s*\d+:\s*/i, '').trim()).filter(Boolean)
+  // Format 1: TWEET_1: ... TWEET_2: ... (split on TWEET_N:)
+  if (/TWEET_?\d+\s*:/i.test(text)) {
+    tweets = text.split(/\n?TWEET_?\d+\s*:\s*/i).map((t) => t.trim()).filter(Boolean)
+    if (tweets.length > 1) return tweets.map(cleanTweetPrefix)
+
+    // Also try pipe-separated
+    tweets = text.split('|').map((t) => cleanTweetPrefix(t)).filter(Boolean)
     if (tweets.length > 1) return tweets
   }
 
-  // Format 3: Numbered list (1. text \n 2. text)
+  // Format 2: --- separator
+  tweets = text.split(/\n?---\n?/).map((t) => cleanTweetPrefix(t)).filter(Boolean)
+  if (tweets.length > 1) return tweets
+
+  // Format 3: Tweet 1: ... Tweet 2: ...
+  if (/Tweet\s*\d+\s*:/i.test(text)) {
+    tweets = text.split(/\n?Tweet\s*\d+\s*:\s*/i).map((t) => t.trim()).filter(Boolean)
+    if (tweets.length > 1) return tweets
+  }
+
+  // Format 4: Numbered list (1. text \n 2. text)
   const numbered = text.match(/(?:^|\n)\d+[\.\)]\s+.+/g)
   if (numbered && numbered.length >= 3) {
     return numbered.map((t) => t.replace(/^\n?\d+[\.\)]\s+/, '').trim()).filter(Boolean)
   }
 
-  // Format 4: Double newline separated paragraphs (if 3+ paragraphs, likely tweets)
-  tweets = text.split(/\n\n+/).map((t) => t.trim()).filter(Boolean)
+  // Format 5: Double newline separated paragraphs
+  tweets = text.split(/\n\n+/).map((t) => cleanTweetPrefix(t)).filter(Boolean)
   if (tweets.length >= 3) return tweets
 
-  // Fallback: return as single item
-  return [text.trim()].filter(Boolean)
+  // Fallback: single item, still clean prefix
+  return [cleanTweetPrefix(text)].filter(Boolean)
 }
 
 function countWords(text: string): number {
