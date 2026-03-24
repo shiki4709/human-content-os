@@ -151,13 +151,23 @@ export default function PlatformCard({ content, onPublish, onRefine, onDeleteCon
       })
       if (res.ok) {
         const data = await res.json()
-        setViralScore(data.score)
+        const score = data.score as ViralScore
+
+        // If score is below 80 and we have an improvement suggestion, auto-refine
+        if (score.overall < 80 && score.improvement && onRefine) {
+          // Auto-apply the improvement
+          await onRefine(content.id, score.improvement)
+          // Re-score after refinement (will happen on next mount since content changed)
+        }
+
+        setViralScore(score)
       }
     } catch { /* non-fatal */ }
     setScoringViral(false)
-  }, [content.content, content.platform, content.status, viralScore, scoringViral])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [content.id, content.status, viralScore, scoringViral])
 
-  // Fetch viral score on mount (so it shows in collapsed view)
+  // Fetch viral score on mount
   useEffect(() => {
     if (!viralScore && !scoringViral) {
       fetchViralScore()
@@ -271,25 +281,18 @@ export default function PlatformCard({ content, onPublish, onRefine, onDeleteCon
               {wordCount}w
             </span>
           )}
-          {/* Viral score badge — always visible, tooltip on hover */}
+          {/* Viral score badge */}
           {!isPublished && viralScore && (
-            <div className="relative group flex-shrink-0">
-              <span className={[
-                'text-[10px] font-bold px-1.5 py-0.5 rounded-md cursor-help',
-                viralScore.overall >= 80
-                  ? 'text-green bg-green/10 border border-green/20'
-                  : viralScore.overall >= 60
-                    ? 'text-gold bg-gold/10 border border-gold/20'
-                    : 'text-text3 bg-bg3 border border-border',
-              ].join(' ')}>
-                {viralScore.overall}
-              </span>
-              <div className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-60 text-[11px] leading-snug rounded-lg px-3 py-2.5 shadow-xl opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-20" style={{ backgroundColor: '#1a1a1a', color: '#f5f5f5' }}>
-                <p className="font-medium mb-1.5">{viralScore.verdict}</p>
-                <p style={{ color: '#a3a3a3' }}>💡 {viralScore.improvement}</p>
-                <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent" style={{ borderTopColor: '#1a1a1a' }} />
-              </div>
-            </div>
+            <span className={[
+              'text-[10px] font-bold px-1.5 py-0.5 rounded-md flex-shrink-0',
+              viralScore.overall >= 80
+                ? 'text-green bg-green/10 border border-green/20'
+                : viralScore.overall >= 60
+                  ? 'text-gold bg-gold/10 border border-gold/20'
+                  : 'text-text3 bg-bg3 border border-border',
+            ].join(' ')}>
+              {viralScore.overall}
+            </span>
           )}
           {!isPublished && scoringViral && (
             <span className="w-3 h-3 rounded-full border-2 border-text3/30 border-t-text3 animate-spin-fast block flex-shrink-0" />
