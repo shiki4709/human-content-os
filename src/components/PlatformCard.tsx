@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import type { GeneratedContent } from '@/types'
-import MediaPicker from './MediaPicker'
 
 // Viral score types
 interface ViralScore {
@@ -21,7 +20,6 @@ interface PlatformCardProps {
   onRefine: (id: string, instruction: string) => Promise<void>
   onDeleteContent?: (id: string) => Promise<void>
   onRegenerate?: (id: string) => Promise<void>
-  sourceUrl?: string
 }
 
 const PLATFORM_META: Record<string, { label: string; color: string; bgClass: string; borderClass: string; textClass: string; icon: React.ReactNode }> = {
@@ -128,13 +126,7 @@ function countWords(text: string): number {
   return text.trim().split(/\s+/).filter(Boolean).length
 }
 
-function extractStatText(text: string): string | undefined {
-  // Pull first number/percentage/stat from content
-  const match = text.match(/(\d[\d,]*(?:\.\d+)?(?:\s*[%x×]|\s*(?:million|billion|thousand|k|M|B))?)/)
-  return match ? match[1].trim() : undefined
-}
-
-export default function PlatformCard({ content, onPublish, onRefine, onDeleteContent, onRegenerate, sourceUrl }: PlatformCardProps) {
+export default function PlatformCard({ content, onPublish, onRefine, onDeleteContent, onRegenerate }: PlatformCardProps) {
   const [expanded, setExpanded] = useState(false)
   const [editing, setEditing] = useState(false)
   const [editedText, setEditedText] = useState(content.content)
@@ -145,7 +137,6 @@ export default function PlatformCard({ content, onPublish, onRefine, onDeleteCon
   const [quickCopied, setQuickCopied] = useState(false)
   const [regenerating, setRegenerating] = useState(false)
   const [deleting, setDeleting] = useState(false)
-  const [selectedMedia, setSelectedMedia] = useState<string | null>(null)
   const [viralScore, setViralScore] = useState<ViralScore | null>(null)
   const [scoringViral, setScoringViral] = useState(false)
 
@@ -166,12 +157,12 @@ export default function PlatformCard({ content, onPublish, onRefine, onDeleteCon
     setScoringViral(false)
   }, [content.content, content.platform, content.status, viralScore, scoringViral])
 
-  // Fetch viral score when card is expanded
+  // Fetch viral score on mount (so it shows in collapsed view)
   useEffect(() => {
-    if (expanded && !viralScore && !scoringViral) {
+    if (!viralScore && !scoringViral) {
       fetchViralScore()
     }
-  }, [expanded, viralScore, scoringViral, fetchViralScore])
+  }, [viralScore, scoringViral, fetchViralScore])
 
   const meta = PLATFORM_META[content.platform] ?? {
     label: content.platform,
@@ -188,8 +179,6 @@ export default function PlatformCard({ content, onPublish, onRefine, onDeleteCon
     ? content.content.split(/\n?---\n?/).map((t) => t.trim()).filter(Boolean)
     : []
 
-  // Char / word count for LinkedIn
-  const charCount = content.content.length
   const wordCount = countWords(content.content)
 
   async function handleQuickCopy() {
@@ -279,8 +268,24 @@ export default function PlatformCard({ content, onPublish, onRefine, onDeleteCon
           )}
           {isLinkedIn && !isPublished && (
             <span className="text-[10px] text-text3 truncate ml-0.5">
-              {wordCount} words · {charCount.toLocaleString()} chars
+              {wordCount}w
             </span>
+          )}
+          {/* Viral score badge — always visible */}
+          {!isPublished && viralScore && (
+            <span className={[
+              'text-[10px] font-bold px-1.5 py-0.5 rounded-md flex-shrink-0',
+              viralScore.overall >= 80
+                ? 'text-green bg-green/10 border border-green/20'
+                : viralScore.overall >= 60
+                  ? 'text-gold bg-gold/10 border border-gold/20'
+                  : 'text-text3 bg-bg3 border border-border',
+            ].join(' ')}>
+              {viralScore.overall}
+            </span>
+          )}
+          {!isPublished && scoringViral && (
+            <span className="w-3 h-3 rounded-full border-2 border-text3/30 border-t-text3 animate-spin-fast block flex-shrink-0" />
           )}
         </div>
 
@@ -418,45 +423,11 @@ export default function PlatformCard({ content, onPublish, onRefine, onDeleteCon
           </>
         )}
 
-        {/* Viral score + Media — compact row when expanded */}
-        {expanded && !isPublished && (
-          <div className="mt-3 pt-3 border-t border-border space-y-2.5">
-            {/* Viral score — single line */}
-            {scoringViral ? (
-              <div className="flex items-center gap-2 text-xs text-text3">
-                <span className="w-3 h-3 rounded-full border-2 border-text3/30 border-t-text3 animate-spin-fast block flex-shrink-0" />
-                Scoring...
-              </div>
-            ) : viralScore ? (
-              <div className="flex items-start gap-2.5">
-                {/* Score circle */}
-                <div className={[
-                  'w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 border-2',
-                  viralScore.overall >= 80
-                    ? 'text-green border-green/30 bg-green/5'
-                    : viralScore.overall >= 60
-                      ? 'text-gold border-gold/30 bg-gold/5'
-                      : 'text-text3 border-border bg-bg3',
-                ].join(' ')}>
-                  {viralScore.overall}
-                </div>
-                {/* Verdict + tip */}
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs text-text2 leading-snug">{viralScore.verdict}</p>
-                  <p className="text-xs text-accent leading-snug mt-0.5">💡 {viralScore.improvement}</p>
-                </div>
-              </div>
-            ) : null}
-
-            {/* Media — single auto-selected image */}
-            {sourceUrl && (
-              <MediaPicker
-                sourceUrl={sourceUrl}
-                statText={extractStatText(content.content)}
-                selectedMedia={selectedMedia}
-                onSelect={setSelectedMedia}
-              />
-            )}
+        {/* Viral score — show when expanded */}
+        {expanded && !isPublished && viralScore && (
+          <div className="mt-3 pt-3 border-t border-border">
+            <p className="text-xs text-text2 leading-snug">{viralScore.verdict}</p>
+            <p className="text-xs text-accent leading-snug mt-0.5">💡 {viralScore.improvement}</p>
           </div>
         )}
 

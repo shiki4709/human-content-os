@@ -41,7 +41,6 @@ export default function ContentCard({ source, content, onPublish, onRefine, onDe
   const sourceDate = source.rss_published_at ?? source.created_at
   const meta = source.meta as Record<string, unknown> | null
   const angleType = (meta?.angle_type as string) || ''
-  const sourceUrl = (meta?.url as string) || undefined
   const angleMeta = ANGLE_META[angleType]
 
   // Parse the title — if it contains " — " it's "Article Title — Angle Title"
@@ -126,7 +125,6 @@ export default function ContentCard({ source, content, onPublish, onRefine, onDe
                 onRefine={onRefine}
                 onDeleteContent={onDeleteContent}
                 onRegenerate={onRegenerate}
-                sourceUrl={sourceUrl}
               />
             ))}
           </div>
