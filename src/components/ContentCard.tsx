@@ -35,24 +35,25 @@ const ANGLE_META: Record<string, { emoji: string; label: string }> = {
 }
 
 // Viral potential by angle type + platform
+// Scores are relative within each platform (not comparable across platforms)
 const VIRAL_SCORES: Record<string, Record<string, { score: number; label: string; color: string }>> = {
   linkedin: {
-    story:           { score: 95, label: 'Very High', color: 'text-green' },
-    key_insight:     { score: 85, label: 'High', color: 'text-green' },
-    data_point:      { score: 80, label: 'High', color: 'text-green' },
-    contrarian_take: { score: 65, label: 'Medium', color: 'text-gold' },
-    framework:       { score: 60, label: 'Medium', color: 'text-gold' },
-    how_to:          { score: 55, label: 'Medium', color: 'text-gold' },
-    quote:           { score: 35, label: 'Low', color: 'text-text3' },
+    story:           { score: 95, label: 'Best fit', color: 'text-green' },
+    key_insight:     { score: 85, label: 'Great fit', color: 'text-green' },
+    data_point:      { score: 80, label: 'Great fit', color: 'text-green' },
+    contrarian_take: { score: 65, label: 'Good fit', color: 'text-gold' },
+    framework:       { score: 60, label: 'Good fit', color: 'text-gold' },
+    how_to:          { score: 55, label: 'OK fit', color: 'text-text3' },
+    quote:           { score: 35, label: 'Weak fit', color: 'text-text3' },
   },
   x: {
-    contrarian_take: { score: 90, label: 'Very High', color: 'text-green' },
-    data_point:      { score: 85, label: 'High', color: 'text-green' },
-    framework:       { score: 80, label: 'High', color: 'text-green' },
-    how_to:          { score: 80, label: 'High', color: 'text-green' },
-    key_insight:     { score: 65, label: 'Medium', color: 'text-gold' },
-    quote:           { score: 55, label: 'Medium', color: 'text-gold' },
-    story:           { score: 40, label: 'Low', color: 'text-text3' },
+    contrarian_take: { score: 95, label: 'Best fit', color: 'text-green' },
+    data_point:      { score: 90, label: 'Great fit', color: 'text-green' },
+    framework:       { score: 85, label: 'Great fit', color: 'text-green' },
+    how_to:          { score: 85, label: 'Great fit', color: 'text-green' },
+    key_insight:     { score: 70, label: 'Good fit', color: 'text-gold' },
+    quote:           { score: 60, label: 'Good fit', color: 'text-gold' },
+    story:           { score: 40, label: 'Weak fit', color: 'text-text3' },
   },
 }
 
@@ -73,12 +74,8 @@ export default function ContentCard({ source, content, onPublish, onRefine, onDe
   const articleTitle = labelParts.length > 1 ? labelParts[0] : source.label
   const angleTitle = labelParts.length > 1 ? labelParts[1] : null
 
-  // Sort content by viral potential (highest first)
-  const sortedContent = [...content].sort((a, b) => {
-    const aScore = getViralInfo(a.platform, angleType).score
-    const bScore = getViralInfo(b.platform, angleType).score
-    return bScore - aScore
-  })
+  // Keep platform order as-is (don't sort across platforms — scores are not comparable)
+  const sortedContent = content
 
   return (
     <div className="bg-bg rounded-2xl border border-border shadow-sm overflow-hidden animate-fade-up mb-4">
@@ -154,10 +151,7 @@ export default function ContentCard({ source, content, onPublish, onRefine, onDe
                   {angleType && (
                     <div className="flex items-center justify-between mb-1.5 px-1">
                       <span className={['text-[10px] font-semibold', viral.color].join(' ')}>
-                        {viral.score >= 80 ? '🔥' : viral.score >= 60 ? '👍' : '—'} {viral.label} viral potential
-                      </span>
-                      <span className="text-[10px] text-text3">
-                        {viral.score}/100
+                        {viral.score >= 80 ? '🔥' : viral.score >= 60 ? '👍' : '—'} {viral.label}
                       </span>
                     </div>
                   )}
