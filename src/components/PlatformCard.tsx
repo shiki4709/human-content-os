@@ -271,18 +271,25 @@ export default function PlatformCard({ content, onPublish, onRefine, onDeleteCon
               {wordCount}w
             </span>
           )}
-          {/* Viral score badge — always visible */}
+          {/* Viral score badge — always visible, tooltip on hover */}
           {!isPublished && viralScore && (
-            <span className={[
-              'text-[10px] font-bold px-1.5 py-0.5 rounded-md flex-shrink-0',
-              viralScore.overall >= 80
-                ? 'text-green bg-green/10 border border-green/20'
-                : viralScore.overall >= 60
-                  ? 'text-gold bg-gold/10 border border-gold/20'
-                  : 'text-text3 bg-bg3 border border-border',
-            ].join(' ')}>
-              {viralScore.overall}
-            </span>
+            <div className="relative group flex-shrink-0">
+              <span className={[
+                'text-[10px] font-bold px-1.5 py-0.5 rounded-md cursor-help',
+                viralScore.overall >= 80
+                  ? 'text-green bg-green/10 border border-green/20'
+                  : viralScore.overall >= 60
+                    ? 'text-gold bg-gold/10 border border-gold/20'
+                    : 'text-text3 bg-bg3 border border-border',
+              ].join(' ')}>
+                {viralScore.overall}
+              </span>
+              <div className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 bg-text text-bg text-[10px] leading-snug rounded-lg px-3 py-2 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-20">
+                <p className="font-medium mb-1">{viralScore.verdict}</p>
+                <p className="text-bg/70">💡 {viralScore.improvement}</p>
+                <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-text" />
+              </div>
+            </div>
           )}
           {!isPublished && scoringViral && (
             <span className="w-3 h-3 rounded-full border-2 border-text3/30 border-t-text3 animate-spin-fast block flex-shrink-0" />
@@ -423,13 +430,7 @@ export default function PlatformCard({ content, onPublish, onRefine, onDeleteCon
           </>
         )}
 
-        {/* Viral score — show when expanded */}
-        {expanded && !isPublished && viralScore && (
-          <div className="mt-3 pt-3 border-t border-border">
-            <p className="text-xs text-text2 leading-snug">{viralScore.verdict}</p>
-            <p className="text-xs text-accent leading-snug mt-0.5">💡 {viralScore.improvement}</p>
-          </div>
-        )}
+        {/* Viral tip — only show as tooltip on score badge in header */}
 
         {/* Error */}
         {isFailed && content.error_message && (
