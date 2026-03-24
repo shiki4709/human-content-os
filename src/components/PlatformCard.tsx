@@ -250,7 +250,7 @@ export default function PlatformCard({ content, onPublish, onRefine, onDeleteCon
 
   return (
     <div className={[
-      'rounded-xl border overflow-hidden flex flex-col',
+      'rounded-xl border flex flex-col',
       isPublished ? 'border-greenb/50' : 'border-border',
       'bg-bg2',
     ].join(' ')}>
