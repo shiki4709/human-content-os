@@ -86,31 +86,30 @@ export default function AngleRow({ source, content, onPublish, onRefine, onDelet
         )}
       </button>
 
-      {/* Expanded — show platform cards */}
-      {expanded && (
-        <div className="px-4 pb-4 pt-1 border-t border-border bg-bg2">
-          <div className="flex items-center justify-end mb-3">
-            <button
-              onClick={() => onDelete(source.id)}
-              className="text-[10px] text-text3 hover:text-red transition-colors"
-            >
-              Delete angle
-            </button>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {content.map((item) => (
-              <PlatformCard
-                key={item.id}
-                content={item}
-                onPublish={onPublish}
-                onRefine={onRefine}
-                onDeleteContent={onDeleteContent}
-                onRegenerate={onRegenerate}
-              />
-            ))}
-          </div>
+      {/* Platform cards — always mounted, hidden when collapsed */}
+      <div className={expanded ? 'px-4 pb-4 pt-1 border-t border-border bg-bg2' : 'hidden'}>
+        <div className="flex items-center justify-end mb-3">
+          <button
+            onClick={() => onDelete(source.id)}
+            className="text-[10px] text-text3 hover:text-red transition-colors"
+          >
+            Delete angle
+          </button>
         </div>
-      )}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {content.map((item) => (
+            <PlatformCard
+              key={item.id}
+              content={item}
+              onPublish={onPublish}
+              onRefine={onRefine}
+              onDeleteContent={onDeleteContent}
+              onRegenerate={onRegenerate}
+              visible={expanded}
+            />
+          ))}
+        </div>
+      </div>
     </div>
   )
 }

@@ -20,6 +20,7 @@ interface PlatformCardProps {
   onRefine: (id: string, instruction: string) => Promise<void>
   onDeleteContent?: (id: string) => Promise<void>
   onRegenerate?: (id: string) => Promise<void>
+  visible?: boolean
 }
 
 const PLATFORM_META: Record<string, { label: string; color: string; bgClass: string; borderClass: string; textClass: string; icon: React.ReactNode }> = {
@@ -126,7 +127,7 @@ function countWords(text: string): number {
   return text.trim().split(/\s+/).filter(Boolean).length
 }
 
-export default function PlatformCard({ content, onPublish, onRefine, onDeleteContent, onRegenerate }: PlatformCardProps) {
+export default function PlatformCard({ content, onPublish, onRefine, onDeleteContent, onRegenerate, visible = true }: PlatformCardProps) {
   const [expanded, setExpanded] = useState(false)
   const [editing, setEditing] = useState(false)
   const [editedText, setEditedText] = useState(content.content)
@@ -167,12 +168,12 @@ export default function PlatformCard({ content, onPublish, onRefine, onDeleteCon
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [content.id, content.status, viralScore, scoringViral])
 
-  // Fetch viral score on mount
+  // Fetch viral score only when visible (parent expanded) and only once
   useEffect(() => {
-    if (!viralScore && !scoringViral) {
+    if (visible && !viralScore && !scoringViral) {
       fetchViralScore()
     }
-  }, [viralScore, scoringViral, fetchViralScore])
+  }, [visible, viralScore, scoringViral, fetchViralScore])
 
   const meta = PLATFORM_META[content.platform] ?? {
     label: content.platform,
