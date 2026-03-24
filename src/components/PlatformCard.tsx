@@ -1,8 +1,19 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import type { GeneratedContent } from '@/types'
 import MediaPicker from './MediaPicker'
+
+// Viral score types
+interface ViralScore {
+  overall: number
+  hook_strength: number
+  reply_potential: number
+  save_potential: number
+  share_potential: number
+  verdict: string
+  improvement: string
+}
 
 interface PlatformCardProps {
   content: GeneratedContent
@@ -135,6 +146,32 @@ export default function PlatformCard({ content, onPublish, onRefine, onDeleteCon
   const [regenerating, setRegenerating] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [selectedMedia, setSelectedMedia] = useState<string | null>(null)
+  const [viralScore, setViralScore] = useState<ViralScore | null>(null)
+  const [scoringViral, setScoringViral] = useState(false)
+
+  const fetchViralScore = useCallback(async () => {
+    if (viralScore || scoringViral || content.status === 'published') return
+    setScoringViral(true)
+    try {
+      const res = await fetch('/api/score-viral', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: content.content, platform: content.platform }),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setViralScore(data.score)
+      }
+    } catch { /* non-fatal */ }
+    setScoringViral(false)
+  }, [content.content, content.platform, content.status, viralScore, scoringViral])
+
+  // Fetch viral score when card is expanded
+  useEffect(() => {
+    if (expanded && !viralScore && !scoringViral) {
+      fetchViralScore()
+    }
+  }, [expanded, viralScore, scoringViral, fetchViralScore])
 
   const meta = PLATFORM_META[content.platform] ?? {
     label: content.platform,
@@ -379,6 +416,69 @@ export default function PlatformCard({ content, onPublish, onRefine, onDeleteCon
               </button>
             )}
           </>
+        )}
+
+        {/* Viral score — show when expanded */}
+        {expanded && !isPublished && (
+          <div className="mt-3 pt-3 border-t border-border">
+            {scoringViral ? (
+              <div className="flex items-center gap-2 text-xs text-text3">
+                <span className="w-3 h-3 rounded-full border-2 border-text3/30 border-t-text3 animate-spin-fast block" />
+                Analyzing viral potential...
+              </div>
+            ) : viralScore ? (
+              <div>
+                {/* Score bar */}
+                <div className="flex items-center gap-2.5 mb-2">
+                  <span className={[
+                    'text-lg font-bold',
+                    viralScore.overall >= 80 ? 'text-green' : viralScore.overall >= 60 ? 'text-gold' : 'text-text3',
+                  ].join(' ')}>
+                    {viralScore.overall}
+                  </span>
+                  <div className="flex-1">
+                    <div className="h-1.5 rounded-full bg-bg3 overflow-hidden">
+                      <div
+                        className={[
+                          'h-full rounded-full transition-all duration-500',
+                          viralScore.overall >= 80 ? 'bg-green' : viralScore.overall >= 60 ? 'bg-gold' : 'bg-text3',
+                        ].join(' ')}
+                        style={{ width: `${viralScore.overall}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Sub-scores */}
+                <div className="grid grid-cols-4 gap-1.5 mb-2">
+                  {[
+                    { label: 'Hook', value: viralScore.hook_strength },
+                    { label: 'Replies', value: viralScore.reply_potential },
+                    { label: 'Saves', value: viralScore.save_potential },
+                    { label: 'Shares', value: viralScore.share_potential },
+                  ].map((s) => (
+                    <div key={s.label} className="text-center">
+                      <div className={[
+                        'text-[11px] font-bold',
+                        s.value >= 80 ? 'text-green' : s.value >= 60 ? 'text-gold' : 'text-text3',
+                      ].join(' ')}>
+                        {s.value}
+                      </div>
+                      <div className="text-[9px] text-text3">{s.label}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Verdict + improvement */}
+                <p className="text-[11px] text-text2 leading-snug mb-1">
+                  {viralScore.verdict}
+                </p>
+                <p className="text-[11px] text-accent leading-snug">
+                  💡 {viralScore.improvement}
+                </p>
+              </div>
+            ) : null}
+          </div>
         )}
 
         {/* Media picker — show when expanded and not published */}

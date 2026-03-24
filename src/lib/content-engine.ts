@@ -290,3 +290,83 @@ export async function generateAllPlatforms(
 
   return Object.fromEntries(results)
 }
+
+// --- Viral score: AI analyzes the actual generated content ---
+
+export interface ViralScore {
+  overall: number          // 0-100
+  hook_strength: number    // 0-100
+  reply_potential: number  // 0-100
+  save_potential: number   // 0-100
+  share_potential: number  // 0-100
+  verdict: string          // one-line summary
+  improvement: string      // one specific suggestion to improve
+}
+
+const VIRAL_SCORE_PROMPT = `You are a social media content analyst. Score this post on how likely it is to go viral on the specified platform.
+
+SCORING CRITERIA (each 0-100):
+
+hook_strength: How strong is the opening? Does it stop the scroll?
+- 90-100: Provocative claim, surprising stat, or emotional hook that demands attention
+- 60-80: Decent opener but could be sharper
+- 0-50: Generic, boring, or buried lede
+
+reply_potential: Will people REPLY to this? (Replies are the #1 viral signal on both LinkedIn and X)
+- 90-100: Contains a debatable opinion, asks a thought-provoking question, or challenges a common belief
+- 60-80: Might get some replies but doesn't strongly invite conversation
+- 0-50: Informational only, nothing to respond to
+
+save_potential: Will people BOOKMARK/SAVE this? (Bookmarks are 20x a like on X, high signal on LinkedIn)
+- 90-100: Reference-worthy — frameworks, checklists, data, tools, step-by-step guides
+- 60-80: Somewhat useful but not reference material
+- 0-50: Entertaining but not saveable
+
+share_potential: Will people REPOST/SHARE this? (People share to look smart or to validate their own beliefs)
+- 90-100: Makes the sharer look insightful — surprising data, novel framework, or "I've been saying this!"
+- 60-80: Good content but not obviously share-worthy
+- 0-50: Too personal or niche to share
+
+overall: Weighted average considering the platform's algorithm:
+- LinkedIn: dwell_time(30%) + reply_potential(30%) + save_potential(20%) + share_potential(20%)
+- X: reply_potential(35%) + save_potential(30%) + hook_strength(20%) + share_potential(15%)
+
+Also provide:
+- verdict: One pithy sentence summarizing the post's viral potential (e.g., "Strong hook but nothing to debate — add a question" or "This will get bookmarked all day")
+- improvement: One SPECIFIC change to make this score higher (not generic advice — reference the actual content)
+
+Respond in this exact JSON format (no markdown, no code fences):
+{
+  "overall": 72,
+  "hook_strength": 85,
+  "reply_potential": 60,
+  "save_potential": 80,
+  "share_potential": 65,
+  "verdict": "Great hook and save-worthy framework, but needs a debatable angle to drive replies",
+  "improvement": "End with a provocative question like 'Is this the end of [specific thing]?' to invite debate"
+}`
+
+export async function scoreVirality(
+  content: string,
+  platform: string,
+): Promise<ViralScore> {
+  const result = await callClaude(
+    VIRAL_SCORE_PROMPT,
+    `Platform: ${platform === 'x' ? 'X (Twitter)' : 'LinkedIn'}\n\nPost content:\n${content}`,
+  )
+
+  try {
+    const cleaned = result.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+    return JSON.parse(cleaned) as ViralScore
+  } catch {
+    return {
+      overall: 50,
+      hook_strength: 50,
+      reply_potential: 50,
+      save_potential: 50,
+      share_potential: 50,
+      verdict: 'Could not analyze',
+      improvement: 'Try regenerating this content',
+    }
+  }
+}
