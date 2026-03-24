@@ -129,24 +129,32 @@ export interface AnalysisResult {
   total_pieces: number
 }
 
-const ANALYSIS_PROMPT = `You are a content strategist who breaks down articles into repurposable content angles.
+const ANALYSIS_PROMPT = `You are a content strategist who breaks down articles into multiple repurposable content angles. Your job is to find EVERY possible angle — a typical newsletter article has 4-8 distinct angles.
 
-CRITICAL RULE: You may ONLY identify angles that are explicitly present in the article text. Do NOT invent, infer, or embellish. Every angle must be directly traceable to specific sentences or paragraphs in the source article. If the article only has 2 strong angles, return 2 — do not pad with made-up angles.
+Think creatively. The same article can be turned into:
+- A personal story post (the author's experience)
+- A data-driven post (stats and numbers from the article)
+- A contrarian hot take (challenging conventional wisdom)
+- A how-to thread (actionable steps mentioned)
+- A framework post (mental models or systems described)
+- A key insight post (the main takeaway)
+- A quote post (a memorable line)
 
-Analyze the article and identify distinct pieces of content that could be turned into standalone social media posts.
+Each angle should be DIFFERENT ENOUGH to be its own standalone social media post. Someone could post all of them across a week and they'd each feel fresh.
 
-Types of angles to look for:
-- key_insight: A core takeaway or lesson explicitly stated in the article (works on LinkedIn + X)
-- story: A personal anecdote or narrative arc the author actually tells (works best on LinkedIn)
-- data_point: A specific statistic, number, or metric mentioned in the article (works on X + LinkedIn)
-- framework: A mental model, system, or step-by-step process the author describes (works on X threads)
-- contrarian_take: An opinion the author explicitly argues against conventional wisdom (works on X + LinkedIn)
-- how_to: Actionable advice or steps the author actually provides (works on X threads)
-- quote: A memorable sentence or phrase the author actually wrote (works as standalone X tweet)
+Types of angles:
+- key_insight: A core takeaway or lesson from the article (works on LinkedIn + X)
+- story: A narrative or personal experience angle (works best on LinkedIn)
+- data_point: Built around a specific number, stat, or metric (works on X + LinkedIn)
+- framework: A mental model, system, or process (works on X threads)
+- contrarian_take: Challenges a common belief using ideas from the article (works on X + LinkedIn)
+- how_to: Actionable advice or steps (works on X threads)
+- quote: A single memorable insight that works as a standalone post (works on X)
+
+IMPORTANT: Find at least 3 angles, ideally 5-7. Look harder — even a short article usually has a main insight, a supporting story, a surprising data point, and a contrarian reframe.
 
 For each angle, specify which platforms it works best on: "linkedin", "x", or both.
-
-In each summary, reference the specific fact, quote, or detail from the article that this angle is based on.
+For each angle, list any people or companies mentioned that could be @tagged.
 
 Respond in this exact JSON format (no markdown, no code fences):
 {
@@ -156,16 +164,12 @@ Respond in this exact JSON format (no markdown, no code fences):
       "id": "1",
       "type": "key_insight",
       "title": "Short title for this angle (max 10 words)",
-      "summary": "2-3 sentences describing what this content piece would cover. Must reference specific details from the article.",
+      "summary": "2-3 sentences describing what this content piece would cover, referencing specifics from the article.",
       "platforms": ["linkedin", "x"],
-      "mentions": ["@PersonName", "@CompanyName"]
+      "mentions": ["@PersonName"]
     }
   ]
-}
-
-For each angle, also list any specific people, companies, or accounts mentioned in the article that could be @tagged in the post. If no specific names are mentioned, use an empty array.
-
-Only return angles that are DIRECTLY supported by the article text. Quality over quantity.`
+}`
 
 export async function analyzeArticle(
   sourceContent: string,
