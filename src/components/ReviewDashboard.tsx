@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import type { Source, GeneratedContent } from '@/types'
 import type { ContentAngle } from '@/lib/content-engine'
-import ContentCard from './ContentCard'
+import AngleRow from './AngleRow'
 import AngleSelector from './AngleSelector'
 
 interface ReviewItem {
@@ -66,7 +66,6 @@ export default function ReviewDashboard() {
   const [analysis, setAnalysis] = useState<AnalysisState | null>(null)
   const [generating, setGenerating] = useState(false)
   const [platforms, setPlatforms] = useState<Record<string, boolean>>({ linkedin: true, x: true })
-  const [activeSourceIdx, setActiveSourceIdx] = useState(0)
 
   const fetchItems = useCallback(async () => {
     try {
@@ -423,56 +422,19 @@ export default function ReviewDashboard() {
             </p>
           </div>
         ) : items.length > 0 ? (
-          <div>
-            {/* Source tabs — show when multiple sources */}
-            {items.length > 1 && (
-              <div className="flex items-center gap-1.5 mb-4 overflow-x-auto pb-1">
-                {items.map((item, idx) => {
-                  const label = item.source.label.split(' — ')[0].slice(0, 30)
-                  const count = item.content.length
-                  const allDone = item.content.every((c) => c.status === 'published')
-                  return (
-                    <button
-                      key={item.source.id}
-                      onClick={() => setActiveSourceIdx(idx)}
-                      className={[
-                        'flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium border whitespace-nowrap transition-all duration-150',
-                        idx === activeSourceIdx
-                          ? 'border-accent bg-accent/5 text-accent'
-                          : allDone
-                            ? 'border-green/20 bg-green/5 text-green'
-                            : 'border-border text-text3 hover:border-border2 hover:text-text2',
-                      ].join(' ')}
-                    >
-                      {allDone && (
-                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                          <polyline points="20 6 9 17 4 12" />
-                        </svg>
-                      )}
-                      {label}{label.length >= 30 ? '…' : ''} ({count})
-                    </button>
-                  )
-                })}
-              </div>
-            )}
-
-            {/* Active source card */}
-            {items[activeSourceIdx] && (
-              <ContentCard
-                source={items[activeSourceIdx].source}
-                content={items[activeSourceIdx].content}
+          <div className="space-y-2">
+            {items.map((item) => (
+              <AngleRow
+                key={item.source.id}
+                source={item.source}
+                content={item.content}
                 onPublish={handlePublish}
                 onRefine={handleRefine}
-                onDelete={async (id) => {
-                  await handleDelete(id)
-                  if (activeSourceIdx >= items.length - 1 && activeSourceIdx > 0) {
-                    setActiveSourceIdx(activeSourceIdx - 1)
-                  }
-                }}
+                onDelete={handleDelete}
                 onDeleteContent={handleDeleteContent}
                 onRegenerate={handleRegenerate}
               />
-            )}
+            ))}
           </div>
         ) : null}
       </main>
